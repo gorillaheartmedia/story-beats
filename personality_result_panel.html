@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Archetype Result Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #eaf3ff;
+      margin: 0;
+      padding: 20px;
+    }
+    .result-container {
+      max-width: 880px;
+      margin: 0 auto;
+      background: #1e2f57;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px #06132a66;
+    }
+    .result-header {
+      text-align: center;
+      font-size: 2em;
+      margin-bottom: 12px;
+    }
+    .archetype-name {
+      font-size: 1.7em;
+      font-weight: bold;
+      color: #ffd370;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 24px;
+      background: #132752;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .section h3 {
+      margin-top: 0;
+      color: #93c5fd;
+    }
+    .toggle-btn, .assign-btn, .back-btn {
+      display: block;
+      margin: 0 auto 22px auto;
+      background: #4befff;
+      color: #132752;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .assign-btn { background: #90f1a5; }
+    .back-btn { background: #b3b3fd; }
+    .hidden { display: none; }
+  </style>
+</head>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+<body>
+  <div class="result-container">
+    <div class="result-header">🎭 Your Character's Archetype Blend</div>
+    <div class="archetype-name" id="archetypeName">...</div>
+    <button class="toggle-btn" onclick="toggleView()">🔄 Switch View</button>
+    <button class="assign-btn" onclick="assignToCharacter()">✅ Assign to Character</button>
+    <button class="back-btn" onclick="window.location.href='personality_quiz.html'">← Retake Quiz</button>
+<button class="back-btn" onclick="window.location.href='character_profile.html'">← Back to Character Profile</button>
+
+    <div id="roleView" class="section">
+      <h3>Narrative Role</h3>
+      <p><strong>Primary Archetype:</strong> <span id="primaryRole"></span></p>
+      <p id="roleDesc"></p>
+    </div>
+
+    <div id="typeView" class="section hidden">
+      <h3>Personality Type</h3>
+      <p><strong>Personality Signature:</strong> <span id="personalityType"></span> (<span id="traitCode"></span>)</p>
+      <p id="personalityDesc"></p>
+    </div>
+
+    <div class="section">
+      <h3>Trait Code</h3>
+      <p><strong id="traitBreakdown"></strong></p>
+      <p>This code reflects how the character navigates social energy, structure, decision-making, and action style.</p>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+const id = parseInt(params.get("id"), 10);
+const characters = JSON.parse(localStorage.getItem("characters") || "[]");
+const char = characters[id] || {};
+
+    // Mapping of trait codes to personality type and narrative role
+    const personalityMap = {
+      "I-S-R-G": { name: "The Strategist", blend: ["Sage", "Ruler"] },
+      "I-S-R-B": { name: "The Tactician", blend: ["Hero", "Shadow"] },
+      "I-S-E-G": { name: "The Archivist", blend: ["Creator", "Sage"] },
+      "I-S-E-B": { name: "The Watcher", blend: ["Innocent", "Explorer"] },
+      "I-F-R-G": { name: "The Healer", blend: ["Caregiver", "Sage"] },
+      "I-F-R-B": { name: "The Hermit", blend: ["Orphan", "Shadow"] },
+      "I-F-E-G": { name: "The Oracle", blend: ["Sage", "Caregiver"] },
+      "I-F-E-B": { name: "The Dreamer", blend: ["Lover", "Creator"] },
+      "E-S-R-G": { name: "The Commander", blend: ["Ruler", "Warrior"] },
+      "E-S-R-B": { name: "The Enforcer", blend: ["Warrior", "Ruler"] },
+      "E-S-E-G": { name: "The Herald", blend: ["Magician", "Sage"] },
+      "E-S-E-B": { name: "The Performer", blend: ["Trickster", "Lover"] },
+      "E-F-R-G": { name: "The Advocate", blend: ["Caregiver", "Rebel"] },
+      "E-F-R-B": { name: "The Crusader", blend: ["Rebel", "Hero"] },
+      "E-F-E-G": { name: "The Champion", blend: ["Hero", "Lover"] },
+      "E-F-E-B": { name: "The Muse", blend: ["Innocent", "Lover"] }
+    };
+
+    // Optionally add descriptive text for each role/type here:
+    const roleDescriptions = {
+      "Sage": "A wise guide or analyst, revealing truths and offering perspective.",
+      "Ruler": "A leader who values order, structure, and legacy.",
+      "Hero": "Bold protagonist who rises to challenges and inspires others.",
+      "Shadow": "A figure who embodies internal struggle, hidden conflict, or temptation.",
+      "Creator": "Visionary, artist, or inventor who brings new ideas to life.",
+      "Innocent": "Pure-hearted and hopeful, brings optimism to the story.",
+      "Explorer": "Adventurer, always seeking new experiences or understanding.",
+      "Caregiver": "Selfless nurturer who supports and uplifts.",
+      "Orphan": "Realist, survivor, and seeker of belonging.",
+      "Lover": "Romantic, devoted, and emotionally driven.",
+      "Warrior": "Disciplined protector and champion for a cause.",
+      "Magician": "Visionary who transforms, reveals, or manipulates.",
+      "Trickster": "Agent of chaos, humor, or subversion.",
+      "Rebel": "Challenger of the status quo; independent and provocative.",
+    };
+    const personalityDescriptions = {
+      "The Strategist": "Methodical and insightful, always planning ahead with wisdom and care.",
+      "The Tactician": "Bold yet guarded, excels in tough situations and outsmarting adversity.",
+      "The Archivist": "Curates knowledge and beauty, preserving the past for future inspiration.",
+      "The Watcher": "Quiet observer who sees truths others miss, able to inspire change gently.",
+      "The Healer": "Supports growth and recovery for others and themselves through understanding.",
+      "The Hermit": "Withdrawn survivor, finds strength in solitude and overcoming shadows.",
+      "The Oracle": "Combines wisdom and empathy, helping others navigate difficult choices.",
+      "The Dreamer": "Imaginative and hopeful, brings ideals to life and inspires possibility.",
+      "The Commander": "Takes charge, leads with clarity and discipline, wins trust through strength.",
+      "The Enforcer": "Protects order, stands up for values, and enacts justice with resolve.",
+      "The Herald": "Delivers vital truths, insights, or revelations with impact.",
+      "The Performer": "Entertains and connects, moving between humor and genuine emotion.",
+      "The Advocate": "Fights passionately for others, bringing energy and care to every cause.",
+      "The Crusader": "Driven by ideals, stands up boldly against injustice.",
+      "The Champion": "Radiates charisma and courage, unites others in shared purpose.",
+      "The Muse": "Inspires through joy and innocence, uplifting all who meet them."
+    };
+
+    function getTraitCode(score) {
+      return [
+        score.A1.I > score.A1.E ? "I" : "E",
+        score.A2.S > score.A2.F ? "S" : "F",
+        score.A3.R > score.A3.E ? "R" : "E",
+        score.A4.G > score.A4.B ? "G" : "B",
+      ].join("-");
+    }
+
+    // Try loading from localStorage (saved by quiz)
+    const savedScore = JSON.parse(localStorage.getItem("personalityQuizScore"));
+    let traitCode = "E-F-R-B"; // default if missing
+    let result = { code: "E-F-R-B", personalityType: "The Crusader", primaryRole: "Rebel", subRole: "Hero" };
+
+    if (savedScore) {
+      traitCode = getTraitCode(savedScore);
+      const match = personalityMap[traitCode] || personalityMap["E-F-R-B"];
+      result = {
+        code: traitCode,
+        personalityType: match.name,
+        primaryRole: match.blend[0],
+        subRole: match.blend[1],
+        fullLabel: `${match.name} (${match.blend[0]} + ${match.blend[1]})`
+      };
+    }
+
+    document.getElementById("archetypeName").textContent = result.fullLabel;
+    document.getElementById("primaryRole").textContent = result.primaryRole;
+    document.getElementById("personalityType").textContent = result.personalityType;
+    document.getElementById("traitCode").textContent = result.code;
+    document.getElementById("traitBreakdown").textContent = result.code.split("-").join(", ");
+
+    // Show extra descriptions if you want:
+    document.getElementById("roleDesc").textContent = roleDescriptions[result.primaryRole] || "";
+    document.getElementById("personalityDesc").textContent = personalityDescriptions[result.personalityType] || "";
+
+    function toggleView() {
+      document.getElementById('roleView').classList.toggle('hidden');
+      document.getElementById('typeView').classList.toggle('hidden');
+    }
+
+    function assignToCharacter() {
+      const stored = JSON.parse(localStorage.getItem('currentCharacter')) || {};
+      stored.traitCode = result.code;
+      stored.personalityType = result.personalityType;
+      stored.primaryRole = result.primaryRole;
+      stored.subRole = result.subRole;  
+      stored.assignedViaQuiz = true;
+      localStorage.setItem('currentCharacter', JSON.stringify(stored));
+      alert(`✅ Assigned ${result.personalityType} to current character.`);
+    }
+  </script>
+</body>
+</html>

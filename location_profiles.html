@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Location Manager</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #143575 60%, #1958ca 100%); color: #e8ecfa; margin: 0; min-height: 100vh;}
+    .container { max-width: 820px; margin: 36px auto 36px auto; background: rgba(24,39,70,0.97); border-radius: 18px; box-shadow: 0 4px 28px #06103a77; padding: 36px 28px 32px 28px; border: 1.5px solid #3b82f644;}
+    h1 { font-size: 2em; margin-bottom: 14px; color: #fff;}
+    .dashboard-btn, .scene-btn { background: linear-gradient(92deg, #2671f2, #2959de 90%); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 1em; padding: 8px 20px; margin-bottom: 12px; cursor: pointer; transition: background .15s, color .14s; box-shadow: 0 2px 9px #10399a24; margin-right: 12px; margin-top: 0;}
+    .dashboard-btn:hover, .scene-btn:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
+    .top-bar {display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;}
+    .top-bar .btns {display:flex; gap:10px;}
+    .add-btn, .export-btn, .import-btn { background: linear-gradient(92deg, #3282f0, #2b71ea 80%); color: #fff; border: none; border-radius: 10px; font-weight: 600; font-size: 1.08em; padding: 12px 28px; margin-right: 10px; cursor: pointer; transition: background .14s, color .14s; box-shadow: 0 2px 9px #10399a18;}
+    .add-btn:hover, .export-btn:hover, .import-btn:hover { background: linear-gradient(92deg, #1d346e 20%, #3282f0 80%); color: #aee5ff;}
+    .export-btn, .import-btn { padding: 10px 20px;}
+    .search-bar { margin-bottom: 16px;}
+    .search-bar input, .search-bar select { padding:7px 11px; border-radius:7px; border:1.1px solid #284687; background: #19306a44; color: #e8ecfa; font-size:1.04em; margin-right:12px;}
+    .loc-list { display: flex; flex-wrap: wrap; gap: 17px;}
+    .loc-card { background: rgba(255,255,255,0.13); border: 2px solid #2953a950; border-radius: 13px; box-shadow: 0 2px 12px #0a194e32; min-width: 250px; max-width: 340px; flex: 1 1 260px; padding: 0 0 18px 0; margin-bottom:18px; overflow:hidden; display:flex; flex-direction:column;}
+    .loc-img-bar { width:100%; height:110px; background:#18357b; overflow:hidden; display:flex; align-items:center; justify-content:center;}
+    .loc-img-bar img { max-width:100%; max-height:100%; object-fit:cover; display:block;}
+    .loc-card .loc-body { padding: 13px 17px 0 17px; flex:1; display:flex; flex-direction:column;}
+    .loc-card h2 { font-size:1.12em; color:#b7d8fd; font-weight:600; margin:0 0 5px 0;}
+    .loc-type { color:#8bd5fa; font-size:.97em; font-weight:600;}
+    .loc-tags { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 7px 0;}
+    .loc-tag { background: #2959de44; border-radius: 5px; padding: 2px 9px; font-size: .96em; color: #bee1fd; border: 1px solid #3b82f655; font-weight: 500;}
+    .loc-desc { color:#e8ecfa; font-size:1em; margin-bottom:7px;}
+    .loc-scenes { margin:4px 0 0 0; font-size:.97em; color:#b9e6ff;}
+    .loc-actions { margin-top:10px; display:flex; gap:8px;}
+    .loc-actions button { padding:5px 13px; border-radius:7px; border:none; font-weight:600; background: linear-gradient(92deg, #2671f2, #2959de 90%); color:#fff; cursor:pointer; font-size:.98em; transition: background .14s, color .14s; box-shadow: 0 1px 4px #10399a24;}
+    .loc-actions button:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
+    .loc-actions .del-btn { background: linear-gradient(92deg, #a42034, #eb486b 90%);}
+    .loc-actions .del-btn:hover { background: linear-gradient(92deg, #b22234 0%, #fc6f96 100%);}
+    .modal-back { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; background: rgba(11,28,51,0.41); display: flex; align-items: center; justify-content: center; z-index: 30; animation: fadein .3s;}
+    .modal { background: #12244a; padding: 28px 28px 22px 28px; border-radius: 14px; min-width: 340px; box-shadow: 0 4px 32px #09337155; border: 2px solid #214082; color: #e3eeff; max-width: 98vw;}
+    .modal label { display:block; margin-top:15px; font-size:1.05em;}
+    .modal input[type="text"], .modal textarea, .modal select { width:100%; padding:8px 10px; border-radius:6px; border:1.2px solid #284687; background: #19306a44; color: #e8ecfa; font-size: 1.02em; margin-top:4px; margin-bottom:6px;}
+    .modal textarea {resize:vertical;}
+    .modal .tags {margin-bottom:10px;}
+    .modal-tag { background: #2959de44; border-radius: 5px; padding: 2px 8px; font-size: .97em; color: #bee1fd; border: 1px solid #3b82f655; font-weight: 500; margin-right: 3px; margin-bottom: 4px; display: inline-block;}
+    .modal-tag button { background: none; border: none; color: #fff; font-size: 1.09em; margin-left: 6px; cursor: pointer;}
+    .modal-tag button:hover { color: #a42034;}
+    .modal-actions { text-align: right; margin-top: 18px;}
+    .modal-actions button { background: linear-gradient(92deg, #2671f2, #2959de 90%); color: #fff; border: none; border-radius: 7px; font-weight: 600; font-size: 1.01em; padding: 7px 18px; margin-left: 9px; cursor: pointer; transition: background .15s, color .13s;}
+    .modal-actions button:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
+    .img-btns {display:flex; gap:7px; margin-top:6px;}
+    .loc-img-preview {width: 100%; max-width: 320px; max-height: 110px; margin-top: 7px; margin-bottom: 7px; border-radius: 7px;}
+    .img-url-input {width: calc(100% - 40px);}
+    @media (max-width:700px) { .container { padding: 10px 1vw 20px 1vw; } .loc-list { gap:8px;} .loc-card { min-width: 150px; padding: 0;} .modal { padding: 8px 2vw;}}
+.fab-research {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 9999;
+  width: 62px;
+  height: 62px;
+  background: linear-gradient(130deg, #4befff 60%, #1958ca 100%);
+  border-radius: 50%;
+  box-shadow: 0 2px 22px #2b7aff66;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .14s, box-shadow .12s;
+}
+.fab-research:hover {
+  background: linear-gradient(110deg, #1958ca 40%, #4befff 100%);
+  box-shadow: 0 4px 34px #3be3ff99;
+}
+.fab-research .fab-icon {
+  font-size: 2em;
+  color: #14283c;
+  filter: drop-shadow(0 2px 4px #fffbe933);
+  user-select: none;
+}
+.fab-research:after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 78px;
+  right: 0;
+  background: #14283ccc;
+  color: #fffbb0;
+  padding: 6px 16px;
+  border-radius: 9px;
+  font-size: 1em;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .17s, transform .17s;
+  white-space: nowrap;
+}
+.fab-research:hover:after {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <div>
+        <button onclick="window.location.href='dashboard.html'" class="dashboard-btn">← Dashboard</button>
+        <button onclick="window.location.href='scene_manager.html?id=' + encodeURIComponent(projectId)" class="scene-btn">Scene Manager</button>
+      </div>
+      <div class="btns">
+        <button class="add-btn" onclick="showLocModal()">+ Add Location</button>
+        <button class="export-btn" onclick="exportLocs()">Export</button>
+        <button class="import-btn" onclick="document.getElementById('fileInput').click()">Import</button>
+        <input type="file" id="fileInput" style="display:none" accept=".json"/>
+      </div>
+    </div>
+    <h1 id="projTitle">Location Manager</h1>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search locations..." oninput="renderLocs()">
+      <select id="typeFilter" onchange="renderLocs()">
+        <option value="">All Types</option>
+      </select>
+      <span id="tagsBar"></span>
+    </div>
+    <div class="loc-list" id="locList"></div>
+  </div>
+  <!-- Modal -->
+  <div class="modal-back" id="modalBack" style="display:none">
+    <div class="modal">
+      <h3 id="modalHeader">Add Location</h3>
+      <label>Name
+        <input id="locName" type="text" maxlength="48" placeholder="Location/Setting Name" />
+      </label>
+      <label>Type
+        <input id="locType" type="text" maxlength="32" placeholder="e.g. City, Room, Forest, World" />
+      </label>
+      <label>Tags
+        <div class="tags" id="locTags"></div>
+        <input id="locTagInput" type="text" maxlength="18" placeholder="Add tag & press Enter"/>
+      </label>
+      <label>Description/Notes
+        <textarea id="locDesc" rows="3" maxlength="180" placeholder="Describe or note this location"></textarea>
+      </label>
+      <label>Image
+        <div class="img-btns">
+          <input id="locImgFile" type="file" accept="image/*" style="display:none;">
+          <button type="button" onclick="document.getElementById('locImgFile').click()">Upload Image</button>
+          <button type="button" onclick="addImgFromURL()">From URL</button>
+          <button type="button" onclick="clearImgPreview()">Remove</button>
+        </div>
+        <input id="locImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
+        <img id="locImgPreview" class="loc-img-preview" style="display:none;">
+      </label>
+      <div class="modal-actions">
+        <button onclick="saveLoc()">Save</button>
+        <button onclick="closeModal()" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // -- Project Data Handling --
+    function getQueryParam(name) { let params = new URLSearchParams(window.location.search); return params.get(name);}
+    function getProjects() { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
+    function setProjects(arr) { localStorage.setItem("plotProjects", JSON.stringify(arr)); }
+    let projectId = getQueryParam("id"), project=null, locations=[], scenes=[], types=[], allTags=[];
+    let editingIdx = null, modalTags=[], modalImg=null;
+    function loadProject() {
+      if (!projectId) { alert("No project ID."); window.location.href = "dashboard.html"; return; }
+      let arr = getProjects();
+      project = arr.find(p => p.id === projectId);
+      if (!project) { alert("Project not found."); window.location.href = "dashboard.html"; return; }
+      if (!project.locations) project.locations = [];
+      if (!project.scenes) project.scenes = [];
+      locations = project.locations;
+      scenes = project.scenes;
+      document.getElementById('projTitle').textContent = "Location Manager: " + (project.meta.storyTitle || "Untitled");
+      renderLocs();
+    }
+    function saveProject() {
+      project.locations = locations;
+      let arr = getProjects();
+      let idx = arr.findIndex(p => p.id === projectId);
+      if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; setProjects(arr);}
+    }
+
+    // --- Modal ---
+    function showLocModal(idx=null) {
+      editingIdx = idx;
+      document.getElementById('modalHeader').textContent = idx==null ? "Add Location" : "Edit Location";
+      document.getElementById('locName').value = idx==null ? "" : (locations[idx].name || "");
+      document.getElementById('locType').value = idx==null ? "" : (locations[idx].type || "");
+      modalTags = idx==null ? [] : (locations[idx].tags ? [...locations[idx].tags] : []);
+      renderModalTags();
+      document.getElementById('locDesc').value = idx==null ? "" : (locations[idx].desc || "");
+      modalImg = idx==null ? null : (locations[idx].img || null);
+      updateImgPreview();
+      document.getElementById('modalBack').style.display = "";
+    }
+    function closeModal() { editingIdx = null; document.getElementById('modalBack').style.display = "none"; document.getElementById("locImgURLInput").style.display = "none"; }
+    function saveLoc() {
+      let name = document.getElementById('locName').value.trim();
+      let type = document.getElementById('locType').value.trim();
+      let tags = modalTags.slice();
+      let desc = document.getElementById('locDesc').value.trim();
+      let img = modalImg;
+      if (!name) return alert("Name required.");
+      let obj = { name, type, tags, desc, img };
+      if (editingIdx==null) { locations.push(obj);}
+      else { locations[editingIdx] = obj; }
+      saveProject(); renderLocs(); closeModal();
+    }
+    // Modal tags
+    function renderModalTags() {
+      const tagDiv = document.getElementById("locTags");
+      tagDiv.innerHTML = "";
+      modalTags.forEach((tag, i) => {
+        const span = document.createElement("span");
+        span.className = "modal-tag";
+        span.innerHTML = tag + ' <button onclick="removeModalTag(' + i + ')">×</button>';
+        tagDiv.appendChild(span);
+      });
+    }
+    function removeModalTag(i) { modalTags.splice(i, 1); renderModalTags(); }
+    document.getElementById("locTagInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && this.value.trim()) {
+        if (!modalTags.includes(this.value.trim())) { modalTags.push(this.value.trim()); }
+        this.value = "";
+        renderModalTags();
+        e.preventDefault();
+      }
+    });
+    // Modal image
+    document.getElementById("locImgFile").addEventListener("change", function(ev){
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e){ modalImg = e.target.result; updateImgPreview(); };
+      reader.readAsDataURL(file);
+      this.value = '';
+    });
+    function updateImgPreview() {
+      const img = document.getElementById("locImgPreview");
+      if (modalImg) { img.src = modalImg; img.style.display = ""; }
+      else { img.style.display = "none"; }
+    }
+    function addImgFromURL() {
+      document.getElementById("locImgURLInput").style.display = "";
+      document.getElementById("locImgURLInput").focus();
+    }
+    document.getElementById("locImgURLInput").addEventListener("keydown", function(e){
+      if (e.key === "Enter" && this.value.trim()) {
+        modalImg = this.value.trim();
+        updateImgPreview();
+        this.value = "";
+        this.style.display = "none";
+      }
+    });
+    function clearImgPreview() { modalImg = null; updateImgPreview(); document.getElementById("locImgURLInput").style.display = "none"; }
+
+    // --- List + Filters ---
+    function renderLocs() {
+      const list = document.getElementById("locList"), search = document.getElementById("searchInput").value.toLowerCase();
+      let typeF = document.getElementById("typeFilter").value;
+      let tagF = activeTagFilter;
+      // gather types/tags
+      types = []; allTags = [];
+      locations.forEach(l => { if (l.type && !types.includes(l.type)) types.push(l.type); (l.tags||[]).forEach(t=>{if(!allTags.includes(t))allTags.push(t)}); });
+      // update type filter
+      let tf = document.getElementById("typeFilter");
+      tf.innerHTML = '<option value="">All Types</option>' + types.map(t=>`<option value="${t}">${t}</option>`).join("");
+      // update tags bar
+      let tagsBar = document.getElementById("tagsBar");
+      tagsBar.innerHTML = "";
+      allTags.forEach(tag=>{
+        let btn = document.createElement("span");
+        btn.className = "loc-tag" + (activeTagFilter===tag?" selected":"");
+        btn.style.cursor = "pointer";
+        btn.textContent = tag;
+        btn.onclick = ()=>{ activeTagFilter = (activeTagFilter===tag?"":tag); renderLocs(); };
+        tagsBar.appendChild(btn);
+      });
+      // show list
+      list.innerHTML = "";
+      locations.forEach((l,i) => {
+        if ((search && !((l.name||"").toLowerCase().includes(search) || (l.type||"").toLowerCase().includes(search) || (l.desc||"").toLowerCase().includes(search))) ||
+            (typeF && l.type!==typeF) ||
+            (tagF && !(l.tags||[]).includes(tagF))) return;
+        let card = document.createElement("div");
+        card.className = "loc-card";
+        let imgBar = l.img ? `<div class="loc-img-bar"><img src="${l.img}" alt="Location Image"></div>` : "";
+        let tagsHtml = (l.tags||[]).map(t=>`<span class="loc-tag">${t}</span>`).join("");
+        // Show scenes at this location:
+        let theseScenes = scenes.filter(s=>s.location===l.name);
+        let scenesHtml = theseScenes.length ?
+          `<div class="loc-scenes"><b>Scenes:</b> ${theseScenes.map((s,j)=>`<a href="storyboard.html?id=${encodeURIComponent(projectId)}" target="_blank" style="color:#60a5fa;text-decoration:underline">${s.title}</a>`).join(", ")}</div>`
+          : "";
+        card.innerHTML = imgBar + `<div class="loc-body">
+            <h2>${l.name || "<i>(Untitled)</i>"}</h2>
+            <div class="loc-type">${l.type||""}</div>
+            <div class="loc-tags">${tagsHtml}</div>
+            <div class="loc-desc">${l.desc||""}</div>
+            ${scenesHtml}
+            <div class="loc-actions">
+              <button onclick="showLocModal(${i})">Edit</button>
+              <button class="del-btn" onclick="deleteLoc(${i})">Delete</button>
+            </div>
+          </div>`;
+        list.appendChild(card);
+      });
+    }
+    let activeTagFilter = "";
+    function deleteLoc(idx) { if (!confirm("Delete this location?")) return; locations.splice(idx, 1); saveProject(); renderLocs(); }
+    // --- Export/Import
+    function exportLocs() {
+      const data = JSON.stringify(locations, null, 2);
+      let name = (project.meta.storyTitle || "locations").replace(/[^\w\d]+/g,"_");
+      const blob = new Blob([data], {type: "application/json"});
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = name + "_locations.json";
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }, 100);
+    }
+    document.getElementById('fileInput').addEventListener('change', function(ev) {
+      const file = this.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const loaded = JSON.parse(e.target.result);
+          if (!Array.isArray(loaded)) throw "Invalid file";
+          locations = loaded;
+          saveProject();
+          renderLocs();
+          alert("Locations imported!");
+        } catch (err) {
+          alert("Failed to import. Not a valid locations file.");
+        }
+      };
+      reader.readAsText(file);
+      this.value = '';
+    });
+
+    loadProject();
+  </script>
+</body>
+</html>

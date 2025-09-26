@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Scene Manager</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #143575 60%, #1958ca 100%); color: #e8ecfa; margin: 0; min-height: 100vh; }
+    .container { max-width: 550px; margin: 38px auto 24px auto; background: rgba(24,39,70,0.97); border-radius: 18px; box-shadow: 0 4px 28px #06103a77; padding: 36px 28px 32px 28px; border: 1.5px solid #3b82f644; }
+    h1 { font-size: 2em; margin-bottom: 12px; color: #fff; }
+    .dashboard-btn, .storyboard-btn { background: linear-gradient(92deg, #2671f2, #2959de 90%); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 1em; padding: 8px 20px; margin-bottom: 12px; cursor: pointer; transition: background .15s, color .14s; box-shadow: 0 2px 9px #10399a24; margin-right: 12px; margin-top: 0;}
+    .dashboard-btn:hover, .storyboard-btn:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
+    form label { display:block; margin-top:15px; font-weight: 500;}
+    input[type="text"], textarea, select { width:100%; padding:8px 10px; border-radius:6px; border:1.2px solid #284687; background: #19306a44; color: #e8ecfa; font-size: 1.04em; margin-top:5px;}
+    textarea { resize:vertical;}
+    .tags, .multi-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0 0;}
+    .tag, .multi-opt { background:#19306a55; border-radius:5px; padding:3px 13px; font-size:1em; color:#aee5ff; border:1px solid #3b82f644; cursor:pointer;}
+    .tag button { margin-left:7px; background:none; border:none; color:#fff; font-size:1em; cursor:pointer;}
+    .tag button:hover { color: #a42034;}
+    .multi-opt.selected { background:#60a5fa; color:#18357b;}
+    .multi-opt.add { background:#284687; color:#aee5ff; border:1px dashed #4bbcff;}
+    .color-input-bar {display: flex; align-items: center; gap: 7px; margin-top: 3px;}
+    input[type="color"] {width:35px; height:32px; border:none; background:transparent;}
+    .scene-img-btns {display:flex; gap:7px;}
+    .scene-img-preview {width: 100%; max-width: 340px; max-height: 120px; margin-top: 7px; margin-bottom: 7px; border-radius: 7px;}
+    .img-url-input {width: calc(100% - 40px);}
+    .nav-bar {display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
+    .nav-arrows button { background: linear-gradient(92deg, #1958ca 30%, #60a5fa 100%); color:#fff; border:none; border-radius:7px; padding:7px 13px; font-size:1.1em; margin-left:7px; font-weight:600; cursor:pointer;}
+    .nav-arrows button:disabled { background: #182352; color:#7893c0;}
+    .scene-index-label { color:#b9d8fc; font-size:1.03em; margin-left: 9px;}
+    .form-actions {text-align:right; margin-top:14px;}
+    .form-actions button { font-size:1.08em; margin-left:10px; }
+    .modal-notes {background:#152d57; color:#aedcff; border-radius:6px; font-size:1em; padding:8px 8px 8px 10px;}
+    @media (max-width:700px) { .container { padding: 10px 2vw 16px 2vw; } }
+  </style>
+  <script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container">
+    <div class="nav-bar">
+      <div>
+        <button onclick="window.location.href='dashboard.html'" class="dashboard-btn">← Dashboard</button>
+        <button onclick="gotoStoryboard()" class="storyboard-btn">📋 Go to Storyboard</button>
+      </div>
+      <div class="nav-arrows">
+        <button onclick="navScene(-1)" id="prevBtn">←</button>
+        <span class="scene-index-label" id="sceneIndexLabel"></span>
+        <button onclick="navScene(1)" id="nextBtn">→</button>
+      </div>
+    </div>
+    <h1 id="projTitle">Scene Manager</h1>
+    <form id="sceneForm" onsubmit="saveScene();return false;">
+      <label>Scene Title
+        <input id="sceneTitle" type="text" maxlength="80" placeholder="Scene Title" required/>
+      </label>
+      <label>Summary
+        <textarea id="sceneSummary" rows="3" maxlength="250" placeholder="A short summary for this scene"></textarea>
+      </label>
+      <label>Status
+        <select id="sceneStatus">
+          <option>Draft</option>
+          <option>Revised</option>
+          <option>Final</option>
+          <option>Skipped</option>
+        </select>
+      </label>
+      <label>Tags
+        <div class="tags" id="sceneTags"></div>
+        <input id="sceneTagInput" type="text" maxlength="22" placeholder="Add a tag & press Enter"/>
+      </label>
+      <label>Location
+        <div class="multi-list" id="locList"></div>
+        <input id="sceneLocInput" type="text" maxlength="40" placeholder="Add new location & press Enter"/>
+      </label>
+      <label>Characters Present
+        <div class="multi-list" id="charList"></div>
+        <input id="sceneCharInput" type="text" maxlength="30" placeholder="Add new character & press Enter"/>
+      </label>
+      <label>Link to Beat
+        <select id="sceneBeat">
+          <option value="">None</option>
+        </select>
+      </label>
+      <label>Card Color
+        <div class="color-input-bar">
+          <input type="color" id="sceneColor" value="#60a5fa">
+          <input id="sceneColorHex" type="text" maxlength="7" style="width:76px; font-size:1.04em; background:#17255b; color:#b7d8fd; border-radius:5px; border:1px solid #184183;" placeholder="#60a5fa">
+        </div>
+      </label>
+      <label>Image
+        <div class="scene-img-btns">
+          <input id="sceneImgFile" type="file" accept="image/*" style="display:none;">
+          <button type="button" onclick="document.getElementById('sceneImgFile').click()">Upload Image</button>
+          <button type="button" onclick="addImgFromURL()">From URL</button>
+          <button type="button" onclick="clearImgPreview()">Remove</button>
+        </div>
+        <input id="sceneImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
+        <img id="sceneImgPreview" class="scene-img-preview" style="display:none;">
+      </label>
+      <label>Notes
+        <textarea id="sceneNotes" rows="2" maxlength="300" class="modal-notes" placeholder="Props, time, weather, goals, etc."></textarea>
+      </label>
+      <div class="form-actions">
+        <button type="submit" id="saveBtn">💾 Save Scene</button>
+        <button type="button" onclick="clearForm()">+ New Scene</button>
+        <button type="button" onclick="deleteScene()" id="delBtn" style="color:#f99;">Delete</button>
+      </div>
+    </form>
+  </div>
+<script>
+  // --- Project Data Handling ---
+  function getQueryParam(name) { let params = new URLSearchParams(window.location.search); return params.get(name);}
+  function getProjects() { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
+  function setProjects(arr) { localStorage.setItem("plotProjects", JSON.stringify(arr)); }
+
+  let projectId = getQueryParam("id"), project=null, scenes=[], beats=[], locations=[], characters=[];
+  let sceneIdx = 0;
+  let modalTags=[], modalLocation="", modalChars=[], modalImg=null, modalColor="#60a5fa";
+
+  // Retrieve navigation context from Event Manager
+  const savedSceneId = localStorage.getItem("currentScene");
+  const savedEventId = localStorage.getItem("currentEvent");
+  const savedProjectId = localStorage.getItem("currentProject");
+
+  function loadProject() {
+    if (!projectId) { alert("No project ID."); window.location.href = "dashboard.html"; return; }
+    let arr = getProjects();
+    project = arr.find(p => p.id === projectId);
+    if (!project) { alert("Project not found."); window.location.href = "dashboard.html"; return; }
+
+    if (!project.scenes) project.scenes = [];
+    if (!project.locations) project.locations = [];
+    if (!project.characters) project.characters = [];
+    scenes = project.scenes; 
+    locations = project.locations; 
+    characters = project.characters; 
+    beats = project.beats || [];
+
+    document.getElementById('projTitle').textContent = "Scene Manager: " + (project.meta.storyTitle || "Untitled");
+
+    // Determine where to start
+    if (savedSceneId) {
+      const idx = scenes.findIndex((s, i) => s.id === savedSceneId || String(i) === savedSceneId);
+      sceneIdx = idx !== -1 ? idx : -1;
+    } else if (savedEventId) {
+      sceneIdx = -1; // New Scene mode
+    } else {
+      sceneIdx = scenes.length > 0 ? 0 : -1;
+    }
+
+    loadSceneToForm();
+    renderLocList();
+    renderCharList();
+    renderBeatOptions();
+
+    // If came from Event Manager, show back button
+    if (savedEventId) {
+      const backBtn = document.createElement("button");
+      backBtn.textContent = "← Back to Event";
+      backBtn.style.marginBottom = "12px";
+      backBtn.onclick = () => {
+        window.location.href = "event_manager.html?id=" + encodeURIComponent(projectId);
+      };
+      document.querySelector(".container").prepend(backBtn);
+    }
+
+    // Clear context storage
+    localStorage.removeItem("currentScene");
+    localStorage.removeItem("currentEvent");
+    localStorage.removeItem("currentProject");
+  }
+
+  function saveProject() {
+    project.scenes = scenes; 
+    project.locations = locations; 
+    project.characters = characters;
+    let arr = getProjects();
+    let idx = arr.findIndex(p => p.id === projectId);
+    if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; setProjects(arr);}
+  }
+
+  // ---- Scene Form Logic ----
+  function loadSceneToForm() {
+    let lbl = document.getElementById("sceneIndexLabel"), prev = document.getElementById("prevBtn"), next = document.getElementById("nextBtn");
+    if (sceneIdx === -1 || scenes.length === 0) {
+      lbl.textContent = "(New)";
+      prev.disabled = true; next.disabled = true;
+      document.getElementById("saveBtn").textContent = "➕ Add Scene";
+      document.getElementById("delBtn").disabled = true;
+      clearFormFields();
+      return;
+    }
+    lbl.textContent = (sceneIdx+1) + " / " + scenes.length;
+    prev.disabled = (sceneIdx <= 0);
+    next.disabled = (sceneIdx >= scenes.length-1);
+    let s = scenes[sceneIdx];
+    document.getElementById("saveBtn").textContent = "💾 Update Scene";
+    document.getElementById("delBtn").disabled = false;
+    document.getElementById("sceneTitle").value = s.title || "";
+    document.getElementById("sceneSummary").value = s.summary || "";
+    document.getElementById("sceneStatus").value = s.status || "Draft";
+    modalTags = s.tags ? [...s.tags] : [];
+    renderModalTags();
+    modalLocation = s.location || "";
+    renderLocList();
+    modalChars = s.characters ? [...s.characters] : [];
+    renderCharList();
+    document.getElementById("sceneBeat").value = s.beat || "";
+    modalColor = s.color || "#60a5fa";
+    document.getElementById("sceneColor").value = modalColor;
+    document.getElementById("sceneColorHex").value = modalColor;
+    document.getElementById("sceneColorHex").style.background = modalColor + "22";
+    modalImg = s.img || null;
+    updateImgPreview();
+    document.getElementById("sceneNotes").value = s.notes || "";
+  }
+
+  function saveScene() {
+    let title = document.getElementById('sceneTitle').value.trim();
+    let summary = document.getElementById('sceneSummary').value.trim();
+    let status = document.getElementById('sceneStatus').value;
+    let tags = modalTags.slice();
+    let beat = document.getElementById('sceneBeat').value;
+    let color = modalColor;
+    let img = modalImg;
+    let location = modalLocation;
+    let chars = modalChars.slice();
+    let notes = document.getElementById("sceneNotes").value.trim();
+    if (!title) return alert("Scene title is required.");
+    let sceneObj = { title, summary, status, tags, beat, color, img, location, characters: chars, notes };
+    if (sceneIdx === -1) { scenes.push(sceneObj); sceneIdx = scenes.length-1;}
+    else { scenes[sceneIdx] = sceneObj; }
+    saveProject();
+    loadSceneToForm();
+  }
+
+  function clearFormFields() {
+    document.getElementById("sceneTitle").value = "";
+    document.getElementById("sceneSummary").value = "";
+    document.getElementById("sceneStatus").value = "Draft";
+    modalTags = []; renderModalTags();
+    modalLocation = ""; renderLocList();
+    modalChars = []; renderCharList();
+    document.getElementById("sceneBeat").value = "";
+    modalColor = "#60a5fa";
+    document.getElementById("sceneColor").value = modalColor;
+    document.getElementById("sceneColorHex").value = modalColor;
+    document.getElementById("sceneColorHex").style.background = modalColor + "22";
+    modalImg = null; updateImgPreview();
+    document.getElementById("sceneNotes").value = "";
+  }
+
+  function clearForm() { sceneIdx = -1; loadSceneToForm();}
+  function navScene(dir) {
+    if (sceneIdx === -1 || scenes.length === 0) return;
+    sceneIdx += dir;
+    if (sceneIdx < 0) sceneIdx = 0;
+    if (sceneIdx >= scenes.length) sceneIdx = scenes.length-1;
+    loadSceneToForm();
+  }
+  function deleteScene() {
+    if (sceneIdx === -1 || scenes.length === 0) return;
+    if (!confirm("Delete this scene?")) return;
+    scenes.splice(sceneIdx,1);
+    if (sceneIdx > 0) sceneIdx--;
+    else if (scenes.length===0) sceneIdx = -1;
+    saveProject();
+    loadSceneToForm();
+  }
+  function gotoStoryboard() { window.location.href = "storyboard.html?id="+encodeURIComponent(projectId);}
+
+  // Modal tags
+  function renderModalTags() {
+    const tagDiv = document.getElementById("sceneTags");
+    tagDiv.innerHTML = "";
+    modalTags.forEach((tag, i) => {
+      const span = document.createElement("span");
+      span.className = "tag";
+      span.innerHTML = tag + ' <button onclick="removeModalTag(' + i + ')">×</button>';
+      tagDiv.appendChild(span);
+    });
+  }
+  function removeModalTag(i) { modalTags.splice(i, 1); renderModalTags(); }
+  document.getElementById("sceneTagInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && this.value.trim()) {
+      if (!modalTags.includes(this.value.trim())) { modalTags.push(this.value.trim()); }
+      this.value = "";
+      renderModalTags();
+      e.preventDefault();
+    }
+  });
+
+  // Modal color and image
+  document.getElementById("sceneColor").addEventListener("input", function () {
+    modalColor = this.value;
+    document.getElementById("sceneColorHex").value = modalColor;
+    document.getElementById("sceneColorHex").style.background = modalColor + "22";
+  });
+  document.getElementById("sceneColorHex").addEventListener("input", function () {
+    let v = this.value;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      modalColor = v;
+      document.getElementById("sceneColor").value = v;
+      this.style.background = v + "22";
+    }
+  });
+  document.getElementById("sceneImgFile").addEventListener("change", function(ev){
+    const file = this.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){ modalImg = e.target.result; updateImgPreview(); };
+    reader.readAsDataURL(file);
+    this.value = '';
+  });
+  function updateImgPreview() {
+    const img = document.getElementById("sceneImgPreview");
+    if (modalImg) { img.src = modalImg; img.style.display = ""; }
+    else { img.style.display = "none"; }
+  }
+  function addImgFromURL() {
+    document.getElementById("sceneImgURLInput").style.display = "";
+    document.getElementById("sceneImgURLInput").focus();
+  }
+  document.getElementById("sceneImgURLInput").addEventListener("keydown", function(e){
+    if (e.key === "Enter" && this.value.trim()) {
+      modalImg = this.value.trim();
+      updateImgPreview();
+      this.value = "";
+      this.style.display = "none";
+    }
+  });
+  function clearImgPreview() { modalImg = null; updateImgPreview(); document.getElementById("sceneImgURLInput").style.display = "none"; }
+
+  // Location & Character lists
+  function renderLocList() {
+    const locDiv = document.getElementById("locList");
+    locDiv.innerHTML = "";
+    locations.forEach(loc => {
+      let span = document.createElement("span");
+      span.className = "multi-opt" + (modalLocation===loc?" selected":"");
+      span.textContent = loc;
+      span.onclick = ()=>{ modalLocation = loc; renderLocList(); };
+      locDiv.appendChild(span);
+    });
+    let add = document.createElement("span");
+    add.className = "multi-opt add";
+    add.textContent = "+";
+    add.onclick = ()=>{ document.getElementById("sceneLocInput").focus(); };
+    locDiv.appendChild(add);
+  }
+  document.getElementById("sceneLocInput").addEventListener("keydown", function(e){
+    if (e.key === "Enter" && this.value.trim()) {
+      if (!locations.includes(this.value.trim())) locations.push(this.value.trim());
+      modalLocation = this.value.trim();
+      this.value = "";
+      renderLocList();
+    }
+  });
+  function renderCharList() {
+    const charDiv = document.getElementById("charList");
+    charDiv.innerHTML = "";
+    characters.forEach(char => {
+      let span = document.createElement("span");
+      span.className = "multi-opt" + (modalChars.includes(char)?" selected":"");
+      span.textContent = char;
+      span.onclick = ()=>{
+        if (modalChars.includes(char)) modalChars = modalChars.filter(c=>c!==char);
+        else modalChars.push(char);
+        renderCharList();
+      };
+      charDiv.appendChild(span);
+    });
+    let add = document.createElement("span");
+    add.className = "multi-opt add";
+    add.textContent = "+";
+    add.onclick = ()=>{ document.getElementById("sceneCharInput").focus(); };
+    charDiv.appendChild(add);
+  }
+  document.getElementById("sceneCharInput").addEventListener("keydown", function(e){
+    if (e.key === "Enter" && this.value.trim()) {
+      if (!characters.includes(this.value.trim())) characters.push(this.value.trim());
+      if (!modalChars.includes(this.value.trim())) modalChars.push(this.value.trim());
+      this.value = "";
+      renderCharList();
+    }
+  });
+  function renderBeatOptions() {
+    const sel = document.getElementById("sceneBeat");
+    sel.innerHTML = '<option value="">None</option>';
+    beats.forEach((b, i) => {
+      const title = b.title || `Beat ${i+1}`;
+      sel.innerHTML += `<option value="${i}">${title}</option>`;
+    });
+  }
+
+  // -- Init --
+  loadProject();
+</script>
+</body>
+</html>

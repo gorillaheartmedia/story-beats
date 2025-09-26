@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Generator Hub • Story Beats</title>
+  <style>
+    :root{
+      --bg:#0b0f14; /* ink */
+      --panel:#111825; /* deep slate */
+      --panel-2:#0f1622; /* darker slate */
+      --text:#e6eef8;
+      --muted:#a7b3c5;
+      --accent:#7c9cff; /* indigo glow */
+      --accent-2:#60d4a7; /* mint */
+      --warn:#ffcc66;
+      --danger:#ff7c7c;
+      --card:#0f1725;
+      --shadow: 0 10px 30px rgba(0,0,0,.35), 0 0 0 1px rgba(124,156,255,0.08) inset;
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background: radial-gradient(1200px 800px at 75% -10%, rgba(124,156,255,.08), transparent 60%),
+                                radial-gradient(900px 700px at 10% -20%, rgba(96,212,167,.08), transparent 60%),
+                                var(--bg);
+      color:var(--text); font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+    }
+    header{
+      position: sticky; top:0; z-index:50; backdrop-filter: blur(8px);
+      background: linear-gradient(180deg, rgba(11,15,20,.85), rgba(11,15,20,.35));
+      border-bottom:1px solid rgba(124,156,255,.15);
+    }
+    .wrap{max-width:1150px; margin:0 auto; padding: 16px 20px}
+    .row{display:flex; gap:16px; align-items:center; flex-wrap:wrap}
+    .grow{flex:1}
+    .badge{display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; background:rgba(124,156,255,.12); color:var(--accent); border:1px solid rgba(124,156,255,.25); font-weight:600}
+    .header-title{font-weight:800; letter-spacing:.2px; font-size: clamp(20px, 2.6vw, 28px)}
+    .muted{color:var(--muted)}
+
+    main{padding:24px 20px}
+    .grid{display:grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap:16px; max-width:1150px; margin:0 auto}
+    .card{
+      background: linear-gradient(160deg, var(--card), var(--panel));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:16px; position:relative; overflow:hidden; border:1px solid rgba(124,156,255,.12);
+      transition: transform .15s ease, box-shadow .2s ease;
+    }
+    .card:hover{transform: translateY(-2px); box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(124,156,255,.18) inset}
+    .card h3{margin:6px 0 8px; font-size:18px}
+    .card p{margin:0; color:var(--muted); font-size:13.5px}
+    .card .icon{font-size:28px; line-height:1}
+    .chip{display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 10px; border-radius:999px; background: rgba(255,255,255,.04); border:1px dashed rgba(255,255,255,.12); color:var(--muted)}
+    .cta{margin-top:12px; display:flex; gap:8px}
+    .btn{
+      appearance:none; border:1px solid rgba(124,156,255,.35); color:var(--text);
+      background: linear-gradient(180deg, rgba(124,156,255,.2), rgba(124,156,255,.05));
+      padding:8px 12px; border-radius:12px; cursor:pointer; font-weight:600; font-size:14px;
+    }
+    .btn.secondary{border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.04); color:var(--muted)}
+    .btn:active{transform: translateY(1px)}
+
+    /* Modal */
+    dialog{border:0; border-radius: 16px; padding:0; background: linear-gradient(180deg, var(--panel), var(--panel-2)); color:var(--text); box-shadow: 0 40px 120px rgba(0,0,0,.6)}
+    .modal{min-width: min(92vw, 820px)}
+    .modal header{position:sticky; top:0; padding:14px 18px; background: linear-gradient(180deg, rgba(15,22,34,.95), rgba(15,22,34,.65)); border-bottom:1px solid rgba(255,255,255,.06)}
+    .modal h2{margin:0; font-size:18px}
+    .modal .content{padding:16px 18px}
+    .modal .footer{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 18px; border-top:1px solid rgba(255,255,255,.06)}
+
+    .toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px}
+    .input, select{
+      background: rgba(255,255,255,.06); color:var(--text); border:1px solid rgba(255,255,255,.16);
+      padding:8px 10px; border-radius:10px; min-width: 70px;
+    }
+    .input[type=number]{width:90px}
+    .result{
+      font-size: clamp(20px, 3vw, 28px); font-weight:800; letter-spacing:.2px; padding:16px; border-radius:16px;
+      background: linear-gradient(180deg, rgba(124,156,255,.12), rgba(124,156,255,.04)); border:1px solid rgba(124,156,255,.25);
+      text-align:center; margin: 10px 0 6px;
+    }
+    .history{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; margin-top:10px}
+    .history .h-item{padding:10px; border-radius:10px; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); display:flex; align-items:center; justify-content:space-between; gap:8px}
+    .star{cursor:pointer; user-select:none}
+    .linkish{color:var(--accent); cursor:pointer; text-decoration:underline dotted}
+
+    .subtle{font-size:12.5px; color:var(--muted)}
+    .spacer{height:10px}
+    .divider{height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent); margin:10px 0}
+
+    .search{flex:1; position:relative}
+    .search input{width:100%; background: rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); color:var(--text); padding:10px 12px 10px 36px; border-radius:12px}
+    .search .loupe{position:absolute; left:10px; top:50%; transform:translateY(-50%); opacity:.6}
+
+    a{color:inherit; text-decoration:none}
+  </style>
+  <script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="row">
+        <span class="badge">🎲 Random Generator Hub</span>
+        <div class="grow header-title">Instant inspiration tools</div>
+        <div class="chip" id="projectChip">Project: <strong id="projectLabel">—</strong></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="search">
+          <span class="loupe">🔎</span>
+          <input id="searchInput" placeholder="Filter generators by name or tag… (e.g., tarot, numbers)"/>
+        </div>
+        <button class="btn secondary" id="toDashboard">↩︎ Back</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="grid" id="tileGrid">
+      <!-- Tiles will be injected by JS so tags/search are centralized -->
+    </div>
+  </main>
+
+  <!-- Modals: Re-usable shell -->
+  <dialog id="modal" class="modal">
+    <header class="row">
+      <h2 id="modalTitle">Generator</h2>
+      <span class="grow"></span>
+      <button class="btn secondary" id="closeModal">Close</button>
+    </header>
+    <div class="content" id="modalContent"></div>
+    <div class="footer">
+      <div class="subtle">Favorites are saved per-project to your browser.</div>
+      <div class="row">
+        <button class="btn secondary" id="exportHistory">Export History</button>
+        <button class="btn" id="copyLast">Copy Last</button>
+        <button class="btn" id="reroll">Generate</button>
+      </div>
+    </div>
+  </dialog>
+
+<template id="historyItemTpl">
+  <div class="h-item">
+    <span class="val"></span>
+    <span class="star" title="Toggle favorite">☆</span>
+    <button class="del-btn btn danger" style="padding:2px 6px;font-size:12px;" title="Remove">✕</button>
+  </div>
+</template>
+
+  <script>
+    // ----------------------
+    // URL param helpers
+    // ----------------------
+    const url = new URL(location.href);
+    const projectId = url.searchParams.get('projectId') || 'default';
+    document.getElementById('projectLabel').textContent = projectId;
+
+    document.getElementById('toDashboard').onclick = () => {
+      const target = `project_core.html?projectId=${encodeURIComponent(projectId)}`;
+      location.href = target;
+    };
+
+    function withProject(href){
+      const u = new URL(href, location.origin);
+      u.searchParams.set('projectId', projectId);
+      return u.toString();
+    }
+
+    // ----------------------
+    // Storage (per-project)
+    // ----------------------
+    const key = (name) => `sb:rg:${projectId}:${name}`;
+
+    const store = {
+      get(name, fallback){
+        try{ return JSON.parse(localStorage.getItem(key(name))) ?? fallback }catch{ return fallback }
+      },
+      set(name, val){ localStorage.setItem(key(name), JSON.stringify(val)) }
+    };
+
+    // ----------------------
+    // Catalog of generators
+    // ----------------------
+    const generators = [
+      { id:'names', icon:'🧾', title:'Random Name', tags:['people','names','character'], desc:'Quick human & fantasy names with styles.', open: () => openNames() },
+      { id:'dice', icon:'🎲', title:'Dice Roller', tags:['numbers','rpg','probability'], desc:'Roll d4–d100 with count & sum.', open: () => openDice() },
+      { id:'coin', icon:'🪙', title:'Coin Flip', tags:['yes/no','binary','probability'], desc:'Heads or Tails (with history).', open: () => openCoin() },
+      { id:'yesno', icon:'❓', title:'Yes / No / Maybe', tags:['decision','binary','chance'], desc:'Weighted simple decision.', open: () => openYesNo() },
+      { id:'number', icon:'🔢', title:'Number Picker', tags:['numbers','range'], desc:'Pick a number in any range.', open: () => openNumber() },
+      { id:'abc', icon:'🔤', title:'A / B / C', tags:['choice','picker'], desc:'Pick from typed options or A/B/C.', open: () => openABC() },
+      { id:'tarot', icon:'🃏', title:'Tarot Draw', tags:['cards','tarot','mystic'], desc:'Draw 1–3 cards (upright/reversed).', open: () => openTarot() },
+      { id:'playing', icon:'🂡', title:'Playing Card', tags:['cards','52'], desc:'Draw from a 52‑card deck.', open: () => openPlaying() },
+      { id:'charseed', icon:'👤', title:'Character Seed', tags:['story','character'], desc:'Name + goal, secret, obstacle, motivation.', open: () => openCharacterSeed() },
+      { id:'setting', icon:'🏙️', title:'Setting Seed', tags:['world','place','mood'], desc:'Place type + era + mood + twist.', open: () => openSettingSeed() },
+      { id:'engine', icon:'🧩', title:'Random Combo Engine', tags:['grid','combo','advanced'], desc:'5×5 category mixer with favorites.', open: () => openEngineLauncher() },
+      { id:'cardsTool', icon:'🗂️', title:'Prompt Cards', tags:['prompts','cards'], desc:'Jump to Card Prompt Tool.', open: () => location.href = withProject('card_prompt.html') },
+    ];
+
+    // Render tiles
+    const grid = document.getElementById('tileGrid');
+    function renderTiles(list){
+      grid.innerHTML = '';
+      list.forEach(g => {
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `<div class="icon">${g.icon}</div>
+          <h3>${g.title}</h3>
+          <p>${g.desc}</p>
+          <div class="cta"><button class="btn">Open</button><span class="chip">#${g.tags.join(' #')}</span></div>`;
+        el.querySelector('.btn').onclick = g.open;
+        grid.appendChild(el);
+      })
+    }
+    renderTiles(generators);
+
+    // Filter
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.trim().toLowerCase();
+      const list = generators.filter(g => (g.title+ ' ' + g.tags.join(' ')).toLowerCase().includes(q));
+      renderTiles(list);
+    });
+
+    // ----------------------
+    // Modal plumbing
+    // ----------------------
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    const historyItemTpl = document.getElementById('historyItemTpl');
+    const btnClose = document.getElementById('closeModal');
+    const btnExport = document.getElementById('exportHistory');
+    const btnCopy = document.getElementById('copyLast');
+    const btnRoll = document.getElementById('reroll');
+
+    let current = null; // { id, roll(), historyKey }
+
+    btnClose.onclick = () => modal.close();
+    btnExport.onclick = () => exportHistory();
+    btnCopy.onclick = () => copyLast();
+    btnRoll.onclick = () => reroll();
+
+    function openShell(title, bodyHtml){
+      modalTitle.textContent = title;
+      modalContent.innerHTML = bodyHtml;
+      modal.showModal();
+    }
+
+    function reroll(){ if(current && typeof current.roll === 'function'){ current.roll() } }
+
+    function exportHistory(){
+      if(!current) return;
+      const hist = store.get(current.historyKey, []);
+      const blob = new Blob([JSON.stringify({projectId, generator: current.id, history: hist}, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${current.id}-history-${projectId}.json`;
+      a.click();
+    }
+
+    async function copyLast(){
+      const val = modalContent.querySelector('.result')?.dataset?.value;
+      if(!val){ alert('Nothing to copy yet.'); return }
+      try{ await navigator.clipboard.writeText(val); btnCopy.textContent = 'Copied!'; setTimeout(()=>btnCopy.textContent='Copy Last', 1000) }catch{ alert('Copy failed') }
+    }
+
+    function pushHistory(historyKey, value){
+      const hist = store.get(historyKey, []);
+      hist.unshift({ value, ts: Date.now(), fav: false });
+      store.set(historyKey, hist.slice(0, 60)); // keep recent 60
+      renderHistory(historyKey);
+    }
+
+    function toggleFav(historyKey, idx){
+      const hist = store.get(historyKey, []);
+      if(!hist[idx]) return; hist[idx].fav = !hist[idx].fav; store.set(historyKey, hist); renderHistory(historyKey);
+    }
+
+function renderHistory(historyKey){
+  const list = store.get(historyKey, []);
+  const wrap = modalContent.querySelector('.history');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  list.forEach((row, i) => {
+    const item = historyItemTpl.content.firstElementChild.cloneNode(true);
+    item.querySelector('.val').textContent = row.value;
+    const star = item.querySelector('.star');
+    star.textContent = row.fav ? '★' : '☆';
+    star.style.color = row.fav ? 'var(--warn)' : 'inherit';
+    star.onclick = () => toggleFav(historyKey, i);
+    const delBtn = item.querySelector('.del-btn');
+    if(delBtn){
+      delBtn.onclick = () => removeHistoryItem(historyKey, i);
+    }
+    wrap.appendChild(item);
+  });
+}
+
+function removeHistoryItem(historyKey, idx){
+  const hist = store.get(historyKey, []);
+  hist.splice(idx,1);
+  store.set(historyKey, hist);
+  renderHistory(historyKey);
+}
+
+
+    // Utility random helpers
+    const rnd = (n) => Math.floor(Math.random()*n);
+    const pick = (arr) => arr[rnd(arr.length)];
+    const shuffle = (arr) => arr.map(v=>[Math.random(), v]).sort((a,b)=>a[0]-b[0]).map(p=>p[1]);
+
+
+
+    // ----------------------
+    // Generators
+    // ----------------------
+
+    // 1) Names
+    function openNames(){
+      const historyKey = 'names:hist';
+      current = { id:'names', historyKey, roll };
+      openShell('Random Name Generator', `
+        <div class="toolbar">
+          <label>Style
+            <select id="nameStyle">
+              <option value="modern">Modern (US/UK mix)</option>
+              <option value="fantasy">Fantasy</option>
+              <option value="scifi">Sci‑Fi</option>
+            </select>
+          </label>
+          <label>Count <input id="nameCount" class="input" type="number" min="1" max="10" value="1"/></label>
+        </div>
+        <div class="result" id="nameResult" data-value="">—</div>
+        <div class="subtle">Tip: You can generate up to 10 at a time. Click ☆ to favorite.</div>
+        <div class="divider"></div>
+        <div class="history"></div>
+      `);
+      const lists = {
+        modern_first: ['Ava','Olivia','Isla','Mia','Sophia','Liam','Noah','Elijah','Oliver','Henry','Mason','Emma','Amelia','Harper','Lucas','Ethan','Jack','Aria','Evelyn','James','Aurora','Nova','Leo','Wyatt','Mila','Noelle','Hazel','Nora','Mateo','Levi','Aiden','Caleb','Violet','Ivy','Avery','Luna','Benjamin','Abigail','Ella','Scarlett','Chloe'],
+        modern_last: ['Johnson','Smith','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez','Hernandez','Lopez','Gonzalez','Wilson','Anderson','Taylor','Thomas','Moore','Jackson','Martin','Lee','Perez','Thompson','White','Harris','Sanchez','Clark','Ramirez','Lewis','Walker','Young','Allen','King','Wright','Scott','Torres','Nguyen','Hill'],
+        fantasy_first: ['Thalia','Kael','Eldrin','Morrigan','Fenra','Liora','Brom','Nyx','Riven','Seraph','Kaida','Torin','Isolde','Galen','Aerith','Dorian','Sylas','Rowan','Maelis','Orin','Velka','Tamsin','Faelan','Kiera','Drystan'],
+        fantasy_last: ['Stormrider','Nightbloom','Ironbark','Silverveil','Swiftwind','Dawnbreaker','Shadowthorn','Starborne','Grimsong','Ravencrest','Highwater','Ashenvale','Stonehelm','Wintermere','Skylark'],
+        scifi_first: ['Axel','Nova','Zyra','Orion','Kaia','Jax','Lyra','Cato','Rex','Mira','Vega','Zane','Aris','Cyra','Neo','Kade','Sora','Zuri','Kiran','Astra'],
+        scifi_last: ['Quell','Dray','Voss','Krell','Nyx','Solace','Vector','Cipher','Zenith','Flux','Halcyon','Ion','Kestral','Vantage']
+      };
+      function make(){
+        const style = document.getElementById('nameStyle').value;
+        const count = Math.max(1, Math.min(10, parseInt(document.getElementById('nameCount').value||'1')));
+        const build = () => {
+          if(style==='modern') return `${pick(lists.modern_first)} ${pick(lists.modern_last)}`;
+          if(style==='fantasy') return `${pick(lists.fantasy_first)} ${pick(lists.fantasy_last)}`;
+          return `${pick(lists.scifi_first)} ${pick(lists.scifi_last)}`;
+        };
+        const out = Array.from({length:count}, build).join(', ');
+        setResult('nameResult', out);
+        pushHistory(historyKey, out);
+      }
+      function roll(){ make() }
+      current.roll = roll;
+      renderHistory(historyKey);
+    }
+
+    // 2) Dice Roller
+    function openDice(){
+      const historyKey = 'dice:hist';
+      current = { id:'dice', historyKey, roll };
+      openShell('Dice Roller', `
+        <div class="toolbar">
+          <label>Die <select id="die"><option>d4</option><option>d6</option><option>d8</option><option>d10</option><option>d12</option><option>d20</option><option>d100</option></select></label>
+          <label>Count <input id="count" class="input" type="number" min="1" max="20" value="1"/></label>
+        </div>
+        <div class="result" id="diceResult" data-value="">—</div>
+        <div class="subtle">Shows rolls + total. Click ☆ to favorite.</div>
+        <div class="divider"></div>
+        <div class="history"></div>
+      `);
+      function roll(){
+        const die = parseInt(document.getElementById('die').value.replace('d',''));
+        const cnt = Math.max(1, Math.min(20, parseInt(document.getElementById('count').value||'1')));
+        const rolls = Array.from({length:cnt}, ()=> 1 + rnd(die));
+        const total = rolls.reduce((a,b)=>a+b,0);
+        const out = `${rolls.join(' + ')} = ${total}`;
+        setResult('diceResult', out);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll;
+      renderHistory(historyKey);
+    }
+
+    // 3) Coin Flip
+    function openCoin(){
+      const historyKey = 'coin:hist';
+      current = { id:'coin', historyKey, roll };
+      openShell('Coin Flip', `
+        <div class="toolbar"><span class="subtle">Fair 50/50 flip.</span></div>
+        <div class="result" id="coinResult" data-value="">—</div>
+        <div class="history"></div>
+      `);
+      function roll(){
+        const out = Math.random()<.5? 'Heads' : 'Tails';
+        setResult('coinResult', out);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 4) Yes/No/Maybe
+    function openYesNo(){
+      const historyKey = 'yesno:hist';
+      current = { id:'yesno', historyKey, roll };
+      openShell('Yes / No / Maybe', `
+        <div class="toolbar">
+          <label>Yes % <input id="pYes" class="input" type="number" value="45" min="0" max="100"/></label>
+          <label>No % <input id="pNo" class="input" type="number" value="45" min="0" max="100"/></label>
+          <span class="subtle">Remainder becomes Maybe.</span>
+        </div>
+        <div class="result" id="ynResult" data-value="">—</div>
+        <div class="history"></div>
+      `);
+      function roll(){
+        let py = parseFloat(document.getElementById('pYes').value)||0;
+        let pn = parseFloat(document.getElementById('pNo').value)||0;
+        py = Math.max(0, Math.min(100, py)); pn = Math.max(0, Math.min(100, pn));
+        const m = Math.max(0, 100 - (py+pn));
+        const r = Math.random()*100;
+        const out = r < py ? 'Yes' : r < (py+pn) ? 'No' : 'Maybe';
+        setResult('ynResult', `${out}  (Yes ${py}%, No ${pn}%, Maybe ${m}%)`);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 5) Number Picker
+    function openNumber(){
+      const historyKey = 'number:hist';
+      current = { id:'number', historyKey, roll };
+      openShell('Number Picker', `
+        <div class="toolbar">
+          <label>Min <input id="min" class="input" type="number" value="1"/></label>
+          <label>Max <input id="max" class="input" type="number" value="100"/></label>
+        </div>
+        <div class="result" id="numResult" data-value="">—</div>
+        <div class="history"></div>
+      `);
+      function roll(){
+        let a = parseFloat(document.getElementById('min').value)||0;
+        let b = parseFloat(document.getElementById('max').value)||0;
+        if(a>b){ const t=a; a=b; b=t }
+        const out = (Math.floor(Math.random()*(b - a + 1)) + a);
+        setResult('numResult', String(out));
+        pushHistory(historyKey, String(out));
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 6) ABC / options picker
+    function openABC(){
+      const historyKey = 'abc:hist';
+      current = { id:'abc', historyKey, roll };
+      openShell('Choice Picker (A/B/C…)', `
+        <div class="toolbar" style="flex-direction:column; align-items:stretch">
+          <label>Options (comma‑separated)
+            <input id="opts" class="input" style="width:100%" placeholder="A,B,C" value="A,B,C"/>
+          </label>
+        </div>
+        <div class="result" id="abcResult" data-value="">—</div>
+        <div class="history"></div>
+      `);
+      function roll(){
+        const raw = document.getElementById('opts').value||'A,B,C';
+        const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
+        const out = pick(parts);
+        setResult('abcResult', out);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 7) Tarot
+    function openTarot(){
+      const historyKey = 'tarot:hist';
+      current = { id:'tarot', historyKey, roll };
+      openShell('Tarot Draw', `
+        <div class="toolbar">
+          <label>Cards <input id="tarotCount" class="input" type="number" min="1" max="3" value="1"/></label>
+          <label>Reversals <select id="reversal"><option value="yes">Allow</option><option value="no">No</option></select></label>
+          <span class="subtle">Classic 78‑card deck.</span>
+        </div>
+        <div class="result" id="tarotResult" data-value="">—</div>
+        <div class="subtle" id="tarotMeaning"></div>
+        <div class="history"></div>
+      `);
+      const majors = ['0 The Fool','I The Magician','II The High Priestess','III The Empress','IV The Emperor','V The Hierophant','VI The Lovers','VII The Chariot','VIII Strength','IX The Hermit','X Wheel of Fortune','XI Justice','XII The Hanged Man','XIII Death','XIV Temperance','XV The Devil','XVI The Tower','XVII The Star','XVIII The Moon','XIX The Sun','XX Judgement','XXI The World'];
+      const suits = ['Wands','Cups','Swords','Pentacles'];
+      const ranks = ['Ace','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Page','Knight','Queen','King'];
+      const deck = [...majors, ...suits.flatMap(s => ranks.map(r => `${r} of ${s}`))];
+      const meanings = {
+        'The Fool':'beginnings • leap of faith • spontaneity',
+        'The Magician':'will • skill • manifestation',
+        'The High Priestess':'intuition • secrets • inner voice',
+        'The Empress':'nurture • abundance • creation',
+        'The Emperor':'structure • authority • stability',
+        'The Hierophant':'tradition • teaching • conformity',
+        'The Lovers':'choice • union • alignment',
+        'The Chariot':'drive • victory • determination',
+        'Strength':'courage • patience • compassion',
+        'The Hermit':'search • introspection • solitude',
+        'Wheel of Fortune':'cycles • luck • turning point',
+        'Justice':'truth • fairness • cause/effect',
+        'The Hanged Man':'surrender • new perspective',
+        'Death':'ending • transformation • release',
+        'Temperance':'balance • moderation • alchemy',
+        'The Devil':'bondage • temptation • shadow',
+        'The Tower':'upheaval • revelation • change',
+        'The Star':'hope • guidance • renewal',
+        'The Moon':'uncertainty • dream • subconscious',
+        'The Sun':'joy • clarity • vitality',
+        'Judgement':'reckoning • calling • rebirth',
+        'The World':'wholeness • completion • travel'
+      };
+      function roll(){
+        const n = Math.max(1, Math.min(3, parseInt(document.getElementById('tarotCount').value||'1')));
+        const allowRev = document.getElementById('reversal').value === 'yes';
+        const d = shuffle(deck).slice(0, n).map(card => {
+          let rev = allowRev && Math.random()<.5;
+          return {card, rev};
+        });
+        const label = d.map(o => `${o.card}${o.rev?' (reversed)':''}`).join(' | ');
+        setResult('tarotResult', label);
+        const hint = d.map(o => {
+          const key = Object.keys(meanings).find(k => o.card.includes(k));
+          const m = key? meanings[key] : (o.card.includes('Wands')? 'creativity • will • fire' : o.card.includes('Cups')? 'emotion • relationships • water' : o.card.includes('Swords')? 'thought • conflict • air' : 'material • work • earth');
+          return `${o.card}${o.rev?' ↧':''}: ${m}`
+        }).join('\n');
+        document.getElementById('tarotMeaning').textContent = hint;
+        pushHistory(historyKey, label);
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 8) Playing Card
+    function openPlaying(){
+      const historyKey = 'playing:hist';
+      current = { id:'playing', historyKey, roll };
+      openShell('Playing Card Draw', `
+        <div class="toolbar">
+          <label>Cards <input id="pcCount" class="input" type="number" min="1" max="5" value="1"/></label>
+        </div>
+        <div class="result" id="pcResult" data-value="">—</div>
+        <div class="history"></div>
+      `);
+      const suits = ['♠ Spades','♥ Hearts','♦ Diamonds','♣ Clubs'];
+      const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+      const deck = suits.flatMap(s => ranks.map(r => `${r} of ${s}`));
+      function roll(){
+        const n = Math.max(1, Math.min(5, parseInt(document.getElementById('pcCount').value||'1')));
+        const out = shuffle(deck).slice(0,n).join(' | ');
+        setResult('pcResult', out);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 9) Character Seed (name + goal/secret/obstacle/motivation)
+    function openCharacterSeed(){
+      const historyKey = 'charseed:hist';
+      current = { id:'charseed', historyKey, roll };
+      openShell('Character Seed', `
+        <div class="toolbar">
+          <label>Style <select id="cStyle"><option value="modern">Modern</option><option value="fantasy">Fantasy</option><option value="scifi">Sci‑Fi</option></select></label>
+        </div>
+        <div class="result" id="cResult" data-value="">—</div>
+        <div class="subtle">Includes: name, goal, secret, obstacle, motivation.</div>
+        <div class="history"></div>
+      `);
+      const nameLists = {
+        modern_first:['Ava','Noah','Maya','Ethan','Zoe','Caleb','Lily','Logan','Ruby','Elijah','Mia','Owen','Ada','Nora'],
+        modern_last:['Reed','Parker','Hayes','Bennett','Foster','Cole','Reeves','Price','Banks','Hale','Rhodes','Quinn'],
+        fantasy_first:['Kael','Liora','Fen','Nyx','Torin','Isolde','Rowan','Sylas','Maelis','Dorian'],
+        fantasy_last:['Stormrider','Nightbloom','Ironbark','Silverveil','Ravencrest','Ashenvale'],
+        scifi_first:['Nova','Orion','Zyra','Jax','Lyra','Cato','Rex','Vega','Neo','Astra'],
+        scifi_last:['Quell','Voss','Flux','Zenith','Vector','Cipher','Halcyon']
+      };
+      const goal = ['prove their worth','protect someone they love','win a forbidden prize','clear their name','escape their past','unlock a mystery','build a sanctuary','rise in a ruthless order','repair a broken bond'];
+      const secret = ['a hidden crime','a second identity','they caused the accident','an illicit romance','they hear a voice','a lost heirloom in their keeping','debts to the wrong people','forged credentials','a pact made in panic'];
+      const obstacle = ['a powerful rival','their own self‑doubt','a ticking deadline','scarce resources','hostile terrain','corruption from within','a curse that backfires','watchful authorities','bad publicity'];
+      const motivation = ['love','survival','revenge','ambition','altruism','freedom','curiosity','duty','atonement'];
+      function makeName(style){
+        const first = pick(nameLists[style+'_first']);
+        const last = pick(nameLists[style+'_last']);
+        return `${first} ${last}`;
+      }
+      function roll(){
+        const style = document.getElementById('cStyle').value;
+        const out = `${makeName(style)} — goal: ${pick(goal)}; secret: ${pick(secret)}; obstacle: ${pick(obstacle)}; motivation: ${pick(motivation)}.`;
+        setResult('cResult', out);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll;  renderHistory(historyKey);
+    }
+
+    // 10) Setting Seed
+    function openSettingSeed(){
+      const historyKey = 'setting:hist';
+      current = { id:'setting', historyKey, roll };
+      openShell('Setting Seed', `
+        <div class="toolbar">
+          <label>Era <select id="era"><option>Any</option><option>Historical</option><option>Modern</option><option>Sci‑Fi</option><option>Fantasy</option></select></label>
+        </div>
+        <div class="result" id="sResult" data-value="">—</div>
+        <div class="subtle">Place + mood + twist for world‑building.</div>
+        <div class="history"></div>
+      `);
+      const place = ['fog‑drenched harbor','desert trading post','mountain monastery','underground arcology','abandoned amusement park','floating bazaar','forest frontier town','rain‑slick megablock','canal‑laced old city','island research station'];
+      const mood = ['melancholic','bustling','ominous','festive','paranoid','hopeful','decaying','ritualistic','secretive','utopian'];
+      const twist = ['time loops each dusk','outsiders must barter stories','law is enforced by rituals','weather responds to music','maps shift weekly','dreams are taxed','power runs on favors','shadows arrive early','no one can lie on Sundays','ghosts file paperwork'];
+      function roll(){
+        const e = document.getElementById('era').value;
+        const era = e==='Any' ? pick(['Historical','Modern','Sci‑Fi','Fantasy']) : e;
+        const out = `${era} • ${pick(place)} • ${pick(mood)} • ${pick(twist)}`;
+        setResult('sResult', out);
+        pushHistory(historyKey, out);
+      }
+      current.roll = roll; renderHistory(historyKey);
+    }
+
+    // 11) Engine launcher (placeholder link)
+    function openEngineLauncher(){
+      openShell('Random Combo Engine', `
+        <div class="toolbar">
+          <div class="subtle">The 5×5 combination engine lets you define up to 5 categories with up to 5 options each, then generates one from each to create a unique combo. Save favorites and export the set.</div>
+        </div>
+        <div class="row">
+          <button class="btn" id="goEngine">Open Engine</button>
+          <span class="subtle">(Keeps your project ID)</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="divider"></div>
+        <div class="subtle">Coming next: tie saved combos to this project and export to JSON.</div>
+      `);
+      document.getElementById('goEngine').onclick = () => {
+        // When engine page exists, update href below
+        location.href = withProject('random_engine.html');
+      };
+    }
+
+    // Shared setter
+    function setResult(id, text){
+      const el = document.getElementById(id);
+      el.textContent = text; el.dataset.value = text;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sprint Progress Graph</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #eaf3ff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: 1240px;
+      margin: 50px auto 0 auto;
+      background: rgba(24, 39, 70, 0.97);
+      border-radius: 22px;
+      box-shadow: 0 6px 48px #10225244;
+      padding: 50px 5vw 48px 5vw;
+    }
+    h1 {
+      font-size: 2.5em;
+      color: #fff;
+      letter-spacing: 0.04em;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    #wordCountChart {
+      width: 98vw !important;
+      max-width: 1150px !important;
+      height: 64vh !important;
+      max-height: 680px !important;
+      margin: 0 auto;
+      background: #1e2e50;
+      border-radius: 22px;
+      box-shadow: 0 4px 32px #1958ca44;
+      padding: 6px;
+      display: block;
+    }
+    .meta-info {
+      text-align: center;
+      font-size: 1.18em;
+      margin: 12px 0 30px 0;
+      color: #eaf3ff;
+      font-weight: 500;
+    }
+    .back-btn {
+      display: block;
+      margin: 0 auto 18px auto;
+      background: linear-gradient(90deg, #2c8aff, #4befff 90%);
+      color: #193575;
+      font-size: 1.15em;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 36px;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      box-shadow: 0 2px 13px #1948c455;
+    }
+    .back-btn:hover {
+      background: linear-gradient(90deg, #4befff, #2c8aff 100%);
+      color: #16306a;
+    }
+    @media (max-width:900px) {
+      .container { padding: 18px 2vw; }
+      #wordCountChart { height: 44vw !important; }
+      h1 { font-size: 1.4em; }
+    }
+  </style>
+  <script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container">
+    <button class="back-btn" onclick="window.close();">⬅ Back to Sprint</button>
+    <h1>📈 Sprint Progress Graph</h1>
+    <div class="meta-info" id="metaInfo"></div>
+    <canvas id="wordCountChart"></canvas>
+  </div>
+  <script>
+    // Read from localStorage
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    const startDate = new Date(sprint.createdAt || Date.now());
+    const logs = sprint.logs || [];
+    const wordTarget = sprint.wordTarget || 0;
+    const sprintDays = sprint.days || 1;
+    const title = sprint.title || 'Untitled Sprint';
+    const desc = sprint.desc || '';
+    const labels = [];
+    const actualWords = [];
+    const expectedWords = [];
+    let cumulativeActual = 0;
+
+    for (let i = 0; i < sprintDays; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const dateStr = d.toISOString().substring(0, 10);
+      labels.push(dateStr);
+
+      const log = logs.find(l => l.date.startsWith(dateStr));
+      cumulativeActual += log ? log.wordCount || 0 : 0;
+      actualWords.push(cumulativeActual);
+
+      // Accurate, even distribution for expected progress
+      expectedWords.push(Math.round(wordTarget * (i + 1) / sprintDays));
+    }
+
+    document.getElementById('metaInfo').innerHTML =
+      `<b>Sprint:</b> ${title} <br> <b>Goal:</b> ${wordTarget || '—'} words in ${sprintDays} days` +
+      (desc ? `<br><b>Description:</b> ${desc}` : "");
+
+    const ctx = document.getElementById('wordCountChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Actual Words',
+            data: actualWords,
+            borderColor: '#4befff',
+            backgroundColor: 'rgba(75, 239, 255, 0.16)',
+            borderWidth: 5,
+            pointRadius: 6,
+            pointHoverRadius: 11,
+            fill: true,
+            tension: 0.25
+          },
+          {
+            label: 'Expected Progress',
+            data: expectedWords,
+            borderColor: '#fcd34d',
+            backgroundColor: 'rgba(252, 211, 77, 0.10)',
+            borderDash: [10, 6],
+            borderWidth: 4,
+            pointRadius: 0,
+            fill: false,
+            tension: 0.21
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top', labels: { font: { size: 19 } } },
+          tooltip: { mode: 'index', intersect: false, titleFont: { size: 18 }, bodyFont: { size: 17 } }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Words', font: { size: 21, weight: 'bold' } },
+            ticks: { font: { size: 16 } }
+          },
+          x: {
+            title: { display: true, text: 'Date', font: { size: 21, weight: 'bold' } },
+            ticks: { font: { size: 16 } }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

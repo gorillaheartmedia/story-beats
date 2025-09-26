@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Character Profile</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #e8ecfa;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 780px;
+      margin: 34px auto;
+      background: rgba(24,39,70,0.97);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a66;
+      padding: 32px 32px 38px 32px;
+      border: 1.5px solid #3b82f644;
+      animation: fadein 0.7s;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateY(36px);} to {opacity:1;transform:none;} }
+    h1 { font-size: 2em; margin-bottom: 20px; color: #fff;}
+    label {
+      font-weight: 500;
+      margin-top: 16px;
+      display: block;
+      color: #f0f4ff;
+    }
+    input, textarea, select {
+      display: block;
+      margin: 5px 0 16px 0;
+      padding: 10px 14px;
+      width: 100%;
+      max-width: 430px;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      font-size: 1.06em;
+      outline: none;
+      transition: border .18s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border: 1.8px solid #3b82f6;
+      background: #223d7b6b;
+    }
+    textarea {resize: vertical;}
+    img {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      background: #ccc;
+      display: block;
+    }
+    .row { display: flex; gap: 24px; flex-wrap: wrap;}
+    .row > div { flex: 1 1 140px; min-width: 130px;}
+    .role-row { display: flex; gap: 12px; align-items: flex-end;}
+    .role-row input[type="text"] { width: 160px; margin-top: 0;}
+    .add-role-btn {
+      background: linear-gradient(92deg, #3282f0, #2b71ea 80%);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 7px 14px;
+      margin-left: 4px;
+      margin-top: 0;
+      cursor: pointer;
+      transition: background .14s;
+    }
+    .add-role-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    button {
+      font-size: 1.08em;
+      padding: 8px 24px;
+      border-radius: 8px;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      margin-top: 10px;
+      margin-right: 7px;
+      cursor: pointer;
+      transition: background .15s, color .13s;
+      box-shadow: 0 2px 9px #19306a16;
+    }
+    button:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .section {
+      margin-bottom: 22px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #2b4c99;
+    }
+    .tag {
+      display: inline-block;
+      background: #2563eb33;
+      color: #bee1fd;
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin: 3px 3px 3px 0;
+      font-size: .99em;
+      border: 1.2px solid #3b82f655;
+      font-weight: 500;
+    }
+    .tag button {
+      background: none;
+      border: none;
+      margin-left: 5px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .tag button:hover { color: #b22234; }
+    .timeline-childhood { background-color: #cce5ff; }
+    .timeline-education { background-color: #d4edda; }
+    .timeline-career { background-color: #ffeeba; }
+    .timeline-relationships { background-color: #f8d7da; }
+    .timeline-trauma { background-color: #e2d6f9; }
+    .timeline-other { background-color: #e2e3e5; }
+    #timeline { display: flex; overflow-x: auto; gap: 12px; padding-top: 10px;}
+    .parents-row { display: flex; gap: 18px; flex-wrap: wrap;}
+    .parents-row input { width: 180px;}
+    @media (max-width: 700px) {
+      .container { padding: 12px 1vw 14px 1vw; }
+      .row { gap: 8px;}
+      .role-row { flex-direction: column; gap: 6px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="profileContainer" data-project-id="">
+    <h1>🧍 Character Profile</h1>
+    <div class="section">
+      <img id="avatar" src="" />
+      <input type="file" id="imageInput" accept="image/*" />
+      <div class="row">
+        <div><label>Name</label><input type="text" id="name" placeholder="Name" /></div>
+        <div><label>Gender</label>
+          <select id="gender">
+            <option>Male</option>
+            <option>Female</option>
+            <option>Nonbinary</option>
+            <option>Transgender</option>
+            <option>Intersex</option>
+            <option>Other</option>
+            <option>Prefer Not to Say</option>
+          </select>
+        </div>
+        <div><label>Age</label><input type="number" id="age" min="0" placeholder="Age" /></div>
+        <div><label>Birthday</label><input type="date" id="birthday" placeholder="Birthday" /></div>
+      </div>
+      <div class="row">
+        <div><label>Ethnicity</label><input type="text" id="ethnicity" placeholder="Ethnicity" /></div>
+        <div><label>Height</label><input type="text" id="height" placeholder="e.g., 6'1&quot; / 185cm" /></div>
+        <div><label>Weight</label><input type="text" id="weight" placeholder="e.g., 180 lbs / 82kg" /></div>
+        <div><label>Body Type</label><input type="text" id="bodyType" placeholder="e.g., Slim, Muscular, Stocky" /></div>
+      </div>
+      <div class="row">
+        <div><label>Eye Color</label><input type="text" id="eyeColor" placeholder="Eye Color" /></div>
+        <div><label>Hair Color</label><input type="text" id="hairColor" placeholder="Hair Color" /></div>
+        <div><label>Hair Length</label><input type="text" id="hairLength" placeholder="Short, Medium, Long, etc." /></div>
+        <div><label>Birthplace</label><input type="text" id="birthplace" placeholder="City, Country, etc." /></div>
+      </div>
+      <div class="parents-row">
+        <div><label>Parent 1</label><input type="text" id="parent1" placeholder="Parent 1 Name/Notes" /></div>
+        <div><label>Parent 2</label><input type="text" id="parent2" placeholder="Parent 2 Name/Notes" /></div>
+      </div>
+      <div class="row">
+        <div><label>Income</label><input type="text" id="income" placeholder="e.g., $45,000/year" /></div>
+        <div style="flex:2"><label>Occupational History</label>
+          <textarea id="occupationalHistory" placeholder="List jobs, positions, employers, etc."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <button id="openRelationshipGrid" title="View this character’s relationship web">
+      🧭 View Relationship Grid
+    </button>
+
+    <div class="section">
+      <h3>Relationships</h3>
+      <div class="row">
+        <div><label>Worst Enemy</label><input type="text" id="worstEnemy" placeholder="Name / Notes" /></div>
+        <div><label>Best Friend</label><input type="text" id="bestFriend" placeholder="Name / Notes" /></div>
+        <div><label>Neutral Ally</label><input type="text" id="neutralAlly" placeholder="Name / Notes" /></div>
+      </div>
+      <div class="row">
+        <div><label>Siblings</label><input type="text" id="siblings" placeholder="Names (comma-separated)" /></div>
+        <div><label>Spouse/Significant Other</label><input type="text" id="spouse" placeholder="Name / Notes" /></div>
+        <div>
+          <label>Marital Status</label>
+          <select id="maritalStatus">
+            <option>Single</option>
+            <option>Married</option>
+            <option>Widowed</option>
+            <option>Divorced</option>
+            <option>Separated</option>
+            <option>Complicated</option>
+            <option>Partnered</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <label>Relationship History</label>
+      <textarea id="relationshipHistory" placeholder="Past lovers, partners, notable relationship arcs, family drama, etc."></textarea>
+    </div>
+
+    <div class="role-row">
+      <span style="flex:1">
+        <label for="role" style="margin-top:0;">Narrative Role</label>
+        <select id="role">
+          <option>Protagonist</option>
+          <option>Antagonist</option>
+          <option>Deuteragonist</option>
+          <option>Tritagonist</option>
+          <option>Foil</option>
+          <option>Mentor</option>
+          <option>Love Interest</option>
+          <option>Sidekick</option>
+          <option>Shapeshifter</option>
+          <option>Confidant</option>
+          <option>Guardian</option>
+          <option>Villain</option>
+          <option>Comic Relief</option>
+          <option>Trickster</option>
+          <option>Other</option>
+        </select>
+      </span>
+      <input type="text" id="customRole" placeholder="Add custom role..." />
+      <button class="add-role-btn" type="button" id="addCustomRoleBtn">Add</button>
+    </div>
+    <textarea id="description" placeholder="Description / Traits" rows="3"></textarea>
+
+    <div class="section">
+      <label>Ethical Alignment</label>
+      <select id="ethics">
+        <option>Lawful Good</option>
+        <option>Neutral Good</option>
+        <option>Chaotic Good</option>
+        <option>Lawful Neutral</option>
+        <option>True Neutral</option>
+        <option>Chaotic Neutral</option>
+        <option>Lawful Evil</option>
+        <option>Neutral Evil</option>
+        <option>Chaotic Evil</option>
+        <option>Utilitarian</option>
+        <option>Machiavellian</option>
+        <option>Absolutist</option>
+        <option>Relativist</option>
+        <option>Other</option>
+      </select>
+      <textarea id="ethicsNotes" placeholder="Notes on ethical positioning, philosophy, or moral code (optional)"></textarea>
+    </div>
+
+    <div class="section">
+      <input type="text" id="skill" placeholder="Skill or Trade" />
+      <input type="text" id="power" placeholder="Unique Power" />
+      <textarea id="trinket" placeholder="Special Trinket or Keepsake"></textarea>
+      <textarea id="licenses" placeholder="Professional Licenses (comma-separated)"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Day/Night Location Schedule</h3>
+      <input type="text" id="locMorning" placeholder="Morning Location" />
+      <input type="text" id="locAfternoon" placeholder="Afternoon Location" />
+      <input type="text" id="locEvening" placeholder="Evening Location" />
+      <input type="text" id="locNight" placeholder="Night Location" />
+    </div>
+
+    <div class="section">
+      <h3>Last Seen</h3>
+      <input type="text" id="lastSeenLocation" placeholder="Last Seen Location" />
+      <input type="text" id="lastSeenTime" placeholder="Last Seen Date/Time" />
+    </div>
+
+    <div class="section">
+      <h3>Tags</h3>
+      <input type="text" id="tagInput" placeholder="Add tag and press Enter" />
+      <div id="tagList"></div>
+    </div>
+
+    <button id="saveProfileBtn">Save</button>
+    <button id="goBackBtn">Back to Directory</button>
+
+    <div class="section">
+      <button id="openLifeGraphBtn">🧠 Try The New Life Graph</button>
+      <button id="openLayeringCircles">Comprehensive Mapping</button>
+
+      <h3>Timeline</h3>
+      <div id="timeline"></div>
+      <div>
+        <input type="date" id="eventDate" />
+        <input type="text" id="eventTitle" placeholder="Event Title" />
+        <input type="text" id="eventDesc" placeholder="Event Description" />
+        <select id="eventCategory">
+          <option value="childhood">Childhood</option>
+          <option value="education">Education</option>
+          <option value="career">Career</option>
+          <option value="relationships">Relationships</option>
+          <option value="trauma">Trauma / Breakthrough</option>
+          <option value="other" selected>Other</option>
+        </select>
+        <button id="addTimelineEventBtn">Add Event</button>
+      </div>
+    </div>
+  </div>
+<script>
+  // --- Utility ---
+  function getProjectId() {
+    return new URLSearchParams(window.location.search).get("projectId") || "defaultProject";
+  }
+  function getCharacterId() {
+    return new URLSearchParams(window.location.search).get("characterId");
+  }
+
+  const projectId = getProjectId();
+  const characterId = getCharacterId();
+  let projectCharacters = JSON.parse(localStorage.getItem("characters_" + projectId) || "[]");
+  let charIndex = projectCharacters.findIndex(c => c.id === characterId);
+
+  if (charIndex === -1) {
+    alert("Character not found in this project.");
+    window.location.href = "character_layer.html?projectId=" + encodeURIComponent(projectId);
+  }
+
+  let char = projectCharacters[charIndex];
+
+  // Ensure arrays exist
+  char.tags = char.tags || [];
+  char.timeline = char.timeline || [];
+
+  // Populate fields
+  function populate() {
+    document.getElementById("name").value = char.name || "";
+    document.getElementById("gender").value = char.gender || "Male";
+    document.getElementById("age").value = char.age || "";
+
+    // Ensure birthday is in YYYY-MM-DD if possible
+    if (char.birthday && /^\d{4}-\d{2}-\d{2}$/.test(char.birthday)) {
+      document.getElementById("birthday").value = char.birthday;
+    }
+
+    document.getElementById("ethnicity").value = char.ethnicity || "";
+    document.getElementById("height").value = char.height || "";
+    document.getElementById("weight").value = char.weight || "";
+    document.getElementById("bodyType").value = char.bodyType || "";
+    document.getElementById("eyeColor").value = char.eyeColor || "";
+    document.getElementById("hairColor").value = char.hairColor || "";
+    document.getElementById("hairLength").value = char.hairLength || "";
+    document.getElementById("birthplace").value = char.birthplace || "";
+    document.getElementById("parent1").value = char.parent1 || "";
+    document.getElementById("parent2").value = char.parent2 || "";
+    document.getElementById("income").value = char.income || "";
+    document.getElementById("occupationalHistory").value = char.occupationalHistory || "";
+    document.getElementById("worstEnemy").value = char.worstEnemy || "";
+    document.getElementById("bestFriend").value = char.bestFriend || "";
+    document.getElementById("neutralAlly").value = char.neutralAlly || "";
+    document.getElementById("siblings").value = char.siblings || "";
+    document.getElementById("spouse").value = char.spouse || "";
+    document.getElementById("maritalStatus").value = char.maritalStatus || "Single";
+    document.getElementById("relationshipHistory").value = char.relationshipHistory || "";
+    document.getElementById("role").value = char.role || "Protagonist";
+    document.getElementById("description").value = char.description || "";
+    document.getElementById("avatar").src = char.image || "https://via.placeholder.com/200x200?text=No+Image";
+    document.getElementById("skill").value = char.skill || "";
+    document.getElementById("power").value = char.power || "";
+    document.getElementById("trinket").value = char.trinket || "";
+    document.getElementById("licenses").value = (char.licenses || []).join(", ");
+    document.getElementById("locMorning").value = char.locMorning || "";
+    document.getElementById("locAfternoon").value = char.locAfternoon || "";
+    document.getElementById("locEvening").value = char.locEvening || "";
+    document.getElementById("locNight").value = char.locNight || "";
+    document.getElementById("lastSeenLocation").value = char.lastSeenLocation || "";
+    document.getElementById("lastSeenTime").value = char.lastSeenTime || "";
+    document.getElementById("ethics").value = char.ethics || "Lawful Good";
+    document.getElementById("ethicsNotes").value = char.ethicsNotes || "";
+    renderTags();
+    renderTimeline();
+  }
+
+  // Save profile
+  function saveProfile() {
+    char.name = document.getElementById("name").value;
+    char.gender = document.getElementById("gender").value;
+    char.age = document.getElementById("age").value;
+    char.birthday = document.getElementById("birthday").value;
+    char.ethnicity = document.getElementById("ethnicity").value;
+    char.height = document.getElementById("height").value;
+    char.weight = document.getElementById("weight").value;
+    char.bodyType = document.getElementById("bodyType").value;
+    char.eyeColor = document.getElementById("eyeColor").value;
+    char.hairColor = document.getElementById("hairColor").value;
+    char.hairLength = document.getElementById("hairLength").value;
+    char.birthplace = document.getElementById("birthplace").value;
+    char.parent1 = document.getElementById("parent1").value;
+    char.parent2 = document.getElementById("parent2").value;
+    char.income = document.getElementById("income").value;
+    char.occupationalHistory = document.getElementById("occupationalHistory").value;
+    char.worstEnemy = document.getElementById("worstEnemy").value;
+    char.bestFriend = document.getElementById("bestFriend").value;
+    char.neutralAlly = document.getElementById("neutralAlly").value;
+    char.siblings = document.getElementById("siblings").value;
+    char.spouse = document.getElementById("spouse").value;
+    char.maritalStatus = document.getElementById("maritalStatus").value;
+    char.relationshipHistory = document.getElementById("relationshipHistory").value;
+    char.role = document.getElementById("role").value;
+    char.description = document.getElementById("description").value;
+    char.skill = document.getElementById("skill").value;
+    char.power = document.getElementById("power").value;
+    char.trinket = document.getElementById("trinket").value;
+    const licenseVal = document.getElementById("licenses").value.trim();
+    char.licenses = licenseVal ? licenseVal.split(",").map(s => s.trim()) : [];
+    char.locMorning = document.getElementById("locMorning").value;
+    char.locAfternoon = document.getElementById("locAfternoon").value;
+    char.locEvening = document.getElementById("locEvening").value;
+    char.locNight = document.getElementById("locNight").value;
+    char.lastSeenLocation = document.getElementById("lastSeenLocation").value;
+    char.lastSeenTime = document.getElementById("lastSeenTime").value;
+    char.ethics = document.getElementById("ethics").value;
+    char.ethicsNotes = document.getElementById("ethicsNotes").value;
+
+    projectCharacters[charIndex] = char;
+    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    alert("Character saved!");
+  }
+
+  function goBack() {
+    window.location.href = "character_layer.html?projectId=" + encodeURIComponent(projectId);
+  }
+
+  // Image upload
+  document.getElementById("imageInput").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        char.image = evt.target.result;
+        document.getElementById("avatar").src = char.image;
+        projectCharacters[charIndex] = char;
+        localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Tags
+  function renderTags() {
+    const tagList = document.getElementById("tagList");
+    tagList.innerHTML = "";
+    (char.tags || []).forEach((tag, i) => {
+      const span = document.createElement("span");
+      span.className = "tag";
+      span.innerHTML = tag + ' <button onclick="removeTag(' + i + ')">x</button>';
+      tagList.appendChild(span);
+    });
+  }
+  function removeTag(i) {
+    char.tags.splice(i, 1);
+    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    renderTags();
+  }
+  document.getElementById("tagInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && this.value.trim()) {
+      char.tags.push(this.value.trim());
+      this.value = "";
+      localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+      renderTags();
+      e.preventDefault();
+    }
+  });
+
+  // Timeline
+  function renderTimeline() {
+    const timelineDiv = document.getElementById("timeline");
+    timelineDiv.innerHTML = "";
+    char.timeline.forEach((event, i) => {
+      const card = document.createElement("div");
+      card.className = "timeline-" + (event.category || "other");
+      card.style = "min-width: 200px; padding: 10px; border-radius: 6px;";
+      card.innerHTML = `
+        <strong>${event.date || ""}</strong><br/>
+        <b>${event.title || ""}</b><br/>
+        <span>${event.description || ""}</span>
+        <br/><span style="opacity:.75;">${event.category || ""}</span>
+        <br/>
+        <button onclick="editTimelineEvent(${i})">Edit</button>
+        <button onclick="removeTimelineEvent(${i})">Remove</button>
+      `;
+      timelineDiv.appendChild(card);
+    });
+  }
+  function addTimelineEvent() {
+    char.timeline.push({
+      date: document.getElementById("eventDate").value,
+      title: document.getElementById("eventTitle").value,
+      description: document.getElementById("eventDesc").value,
+      category: document.getElementById("eventCategory").value,
+    });
+    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    renderTimeline();
+  }
+  function editTimelineEvent(index) {
+    const ev = char.timeline[index];
+    document.getElementById("eventDate").value = ev.date || "";
+    document.getElementById("eventTitle").value = ev.title || "";
+    document.getElementById("eventDesc").value = ev.description || "";
+    document.getElementById("eventCategory").value = ev.category || "other";
+    removeTimelineEvent(index);
+  }
+  function removeTimelineEvent(i) {
+    char.timeline.splice(i, 1);
+    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    renderTimeline();
+  }
+
+  // Button listeners
+  document.getElementById("saveProfileBtn").addEventListener("click", saveProfile);
+  document.getElementById("goBackBtn").addEventListener("click", goBack);
+  document.getElementById("addCustomRoleBtn").addEventListener("click", function() {
+    const val = document.getElementById("customRole").value.trim();
+    if (val && !Array.from(document.getElementById("role").options).some(opt => opt.value.toLowerCase() === val.toLowerCase())) {
+      const opt = document.createElement("option");
+      opt.textContent = val;
+      opt.value = val;
+      document.getElementById("role").appendChild(opt);
+      document.getElementById("role").value = val;
+    }
+    document.getElementById("customRole").value = '';
+  });
+
+  // Navigation buttons
+  document.getElementById("openRelationshipGrid").addEventListener("click", function() {
+    window.location.href =
+      "relationship_grid.html?projectId=" + encodeURIComponent(projectId) +
+      "&characterId=" + encodeURIComponent(characterId) +
+      "&focus=" + encodeURIComponent(document.getElementById("name").value);
+  });
+
+  document.getElementById("openLifeGraphBtn").addEventListener("click", function() {
+    window.open(
+      "life_graph_modal.html?characterId=" + encodeURIComponent(characterId) +
+      "&projectId=" + encodeURIComponent(projectId),
+      "_blank",
+      "width=1200,height=800"
+    );
+  });
+
+  document.getElementById("openLayeringCircles").addEventListener("click", function() {
+    window.open(
+      "comprehensive_layering_circles.html?characterId=" + encodeURIComponent(characterId) +
+      "&projectId=" + encodeURIComponent(projectId),
+      "_blank",
+      "width=1200,height=800"
+    );
+  });
+
+  populate();
+</script>
+<style>
+  /* Toast styles */
+  #toastContainer {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    background: rgba(40, 110, 255, 0.95);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.95em;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+    animation: slideIn 0.3s ease, fadeOut 0.5s ease 2.5s forwards;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes fadeOut {
+    to { opacity: 0; transform: translateX(40px); }
+  }
+</style>
+
+<div id="toastContainer"></div>
+
+<script>
+  function showToast(message, color = null) {
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    if (color) toast.style.background = color;
+    toast.textContent = message;
+    document.getElementById("toastContainer").appendChild(toast);
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
+  }
+
+  // Replace alert in saveProfile
+  function saveProfile() {
+    char.name = document.getElementById("name").value;
+    char.gender = document.getElementById("gender").value;
+    char.age = document.getElementById("age").value;
+    char.birthday = document.getElementById("birthday").value;
+    char.ethnicity = document.getElementById("ethnicity").value;
+    char.height = document.getElementById("height").value;
+    char.weight = document.getElementById("weight").value;
+    char.bodyType = document.getElementById("bodyType").value;
+    char.eyeColor = document.getElementById("eyeColor").value;
+    char.hairColor = document.getElementById("hairColor").value;
+    char.hairLength = document.getElementById("hairLength").value;
+    char.birthplace = document.getElementById("birthplace").value;
+    char.parent1 = document.getElementById("parent1").value;
+    char.parent2 = document.getElementById("parent2").value;
+    char.income = document.getElementById("income").value;
+    char.occupationalHistory = document.getElementById("occupationalHistory").value;
+    char.worstEnemy = document.getElementById("worstEnemy").value;
+    char.bestFriend = document.getElementById("bestFriend").value;
+    char.neutralAlly = document.getElementById("neutralAlly").value;
+    char.siblings = document.getElementById("siblings").value;
+    char.spouse = document.getElementById("spouse").value;
+    char.maritalStatus = document.getElementById("maritalStatus").value;
+    char.relationshipHistory = document.getElementById("relationshipHistory").value;
+    char.role = document.getElementById("role").value;
+    char.description = document.getElementById("description").value;
+    char.skill = document.getElementById("skill").value;
+    char.power = document.getElementById("power").value;
+    char.trinket = document.getElementById("trinket").value;
+    const licenseVal = document.getElementById("licenses").value.trim();
+    char.licenses = licenseVal ? licenseVal.split(",").map(s => s.trim()) : [];
+    char.locMorning = document.getElementById("locMorning").value;
+    char.locAfternoon = document.getElementById("locAfternoon").value;
+    char.locEvening = document.getElementById("locEvening").value;
+    char.locNight = document.getElementById("locNight").value;
+    char.lastSeenLocation = document.getElementById("lastSeenLocation").value;
+    char.lastSeenTime = document.getElementById("lastSeenTime").value;
+    char.ethics = document.getElementById("ethics").value;
+    char.ethicsNotes = document.getElementById("ethicsNotes").value;
+
+    projectCharacters[charIndex] = char;
+    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    showToast("Character saved successfully!");
+  }
+
+  // Override image upload toast
+  document.getElementById("imageInput").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        char.image = evt.target.result;
+        document.getElementById("avatar").src = char.image;
+        projectCharacters[charIndex] = char;
+        localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+        showToast("Image updated!", "#28a745");
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Override timeline add
+  function addTimelineEvent() {
+    char.timeline.push({
+      date: document.getElementById("eventDate").value,
+      title: document.getElementById("eventTitle").value,
+      description: document.getElementById("eventDesc").value,
+      category: document.getElementById("eventCategory").value,
+    });
+    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    renderTimeline();
+    showToast("Timeline event added!", "#17a2b8");
+  }
+</script>
+
+</body>
+</html>

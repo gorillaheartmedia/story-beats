@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Messenger Dialogue Tool</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    html, body {
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      min-height: 100vh; margin: 0; padding: 0;
+      font-family: 'Inter', Arial, sans-serif;
+      color: #eaf3ff;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      background: rgba(24,39,70,0.99);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a66;
+      padding: 28px 28px 34px 28px;
+      border: 1.5px solid #3b82f644;
+    }
+    h1 {
+      font-size: 2em;
+      color: #fff;
+      margin-bottom: 10px;
+      letter-spacing: 0.01em;
+    }
+    .back-btn {
+      float:right;
+      margin-top: -6px;
+      margin-left: 12px;
+      background: linear-gradient(90deg,#3b82f6 10%,#1958ca 90%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1.06em;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 19px;
+      cursor: pointer;
+      transition: background .15s, color .12s;
+      box-shadow: 0 2px 9px #12326d29;
+    }
+    .back-btn:hover {
+      background: linear-gradient(92deg, #1d346e 20%, #3282f0 80%);
+      color: #fffbb0;
+    }
+    .section { margin-bottom: 20px; }
+    label {
+      font-weight: 500;
+      margin-top: 9px;
+      display: block;
+      color: #e9f5ff;
+    }
+    input, select, textarea {
+      margin: 8px 0 12px 0;
+      padding: 9px 13px;
+      width: 100%;
+      max-width: 350px;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #eaf3fa;
+      font-size: 1.08em;
+      outline: none;
+      transition: border .16s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border: 1.7px solid #3b82f6;
+      background: #223d7b6b;
+    }
+    .char-list {
+      display: flex; flex-wrap: wrap; gap: 11px; margin-bottom: 8px;
+    }
+    .char-tag {
+      background: #2563eb33;
+      color: #bee1fd;
+      padding: 4px 13px;
+      border-radius: 4px;
+      font-size: 1em;
+      border: 1.2px solid #3b82f655;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      margin-right: 6px;
+      margin-bottom: 2px;
+    }
+    .char-tag button {
+      background: none; border: none; color: #ffb0c0; margin-left: 6px;
+      font-size: 1.05em; cursor: pointer;
+    }
+    .add-char-btn {
+      background: linear-gradient(92deg, #3282f0, #2b71ea 80%);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 7px 18px;
+      margin: 0 0 5px 0;
+      cursor: pointer;
+      transition: background .14s;
+    }
+    .add-char-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .relationship-grid {
+      margin: 18px 0 17px 0;
+      background: #112346b6;
+      border-radius: 12px;
+      padding: 14px 18px 8px 18px;
+      box-shadow: 0 2px 12px #1a325a14;
+      font-size: 1.07em;
+    }
+    .relationship-row {
+      margin-bottom: 8px;
+      color: #d6ebff;
+    }
+    .relationship-row .rel-label {
+      font-weight: 700;
+      color: #ffe285;
+      font-size: 1em;
+    }
+    .relationship-row .rel-desc {
+      color: #b2e8ff;
+      font-size: 0.99em;
+      font-style: italic;
+    }
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 26px;
+      margin: 0 0 14px 0;
+    }
+    .meta-bar label, .meta-bar select, .meta-bar input {
+      margin: 0 4px 0 0;
+      font-size: 1em;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .meta-bar input[type="text"] {
+      min-width: 80px;
+      max-width: 160px;
+      margin-bottom: 0;
+    }
+    .tags {
+      display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 2px;
+    }
+    .tag {
+      background: #2563eb33;
+      color: #bee1fd;
+      padding: 4px 11px;
+      border-radius: 4px;
+      font-size: .99em;
+      border: 1.2px solid #3b82f655;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      margin-right: 6px;
+      margin-bottom: 2px;
+    }
+    .tag button {
+      background: none; border: none; margin-left: 5px; color: #fff;
+      cursor: pointer; font-size: 1em;
+    }
+    /* Messenger chat area is much bigger now */
+    .messenger-view {
+      background: #10254c;
+      border-radius: 13px;
+      padding: 24px 20px 34px 20px;
+      margin: 22px 0 24px 0;
+      min-height: 370px;
+      box-shadow: 0 2px 24px #2e4eb733;
+      position: relative;
+      max-width: 97vw;
+    }
+    .bubble-row {
+      display: flex;
+      align-items: flex-end;
+      margin-bottom: 15px;
+    }
+    .bubble-row.left { flex-direction: row; }
+    .bubble-row.right { flex-direction: row-reverse; }
+    .avatar {
+      width: 68px; height: 68px; border-radius: 50%;
+      margin: 0 19px; box-shadow: 0 2px 10px #2e67e933;
+      background: #193768;
+      object-fit: cover;
+    }
+    .bubble {
+      max-width: 410px;
+      min-width: 90px;
+      padding: 15px 22px 13px 22px;
+      background: linear-gradient(115deg, #1958ca 75%, #4befff1b 100%);
+      border-radius: 18px 18px 9px 18px;
+      color: #eaf3ff;
+      box-shadow: 0 2px 14px #12326d19;
+      font-size: 1.13em;
+      line-height: 1.5em;
+      position: relative;
+      margin-bottom: 3px;
+      word-break: break-word;
+      z-index: 1;
+      transition: background .11s;
+    }
+    .bubble-row.right .bubble {
+      background: linear-gradient(105deg, #28367e 65%, #60a5fa22 100%);
+      border-radius: 18px 18px 18px 9px;
+    }
+    .bubble-meta {
+      font-size: .96em;
+      color: #a5d6fd;
+      opacity: .89;
+      margin-top: 2px;
+      margin-bottom: 3px;
+      font-weight: 500;
+    }
+    .bubble-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 3px;
+    }
+    .bubble-btns button {
+      font-size: 1em;
+      border-radius: 5px;
+      border: none;
+      padding: 5px 11px;
+      background: #1948c499;
+      color: #eaf3ff;
+      cursor: pointer;
+      transition: background .11s, color .11s;
+    }
+    .bubble-btns button:hover {
+      background: #4befff77;
+      color: #17447e;
+    }
+    .save-btn {
+      float:right;
+      margin-top: 11px;
+      margin-bottom: 0;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1.09em;
+      padding: 10px 27px;
+      cursor: pointer;
+      transition: background .13s, color .11s;
+      box-shadow: 0 1px 8px #1e4ab855;
+    }
+    .save-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    /* Modal */
+    .modal-bg {
+      display: none; position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 999;
+      background: rgba(19,43,97,0.33); align-items: center; justify-content: center;
+    }
+    .modal {
+      background: #19377a;
+      color: #eaf3ff;
+      padding: 35px 40px 20px 35px;
+      border-radius: 20px;
+      min-width: 375px; max-width: 97vw;
+      box-shadow: 0 7px 33px #1c378899, 0 1px 1.5px #1933621c;
+      border: 1.8px solid #25477c;
+      position: relative;
+      font-size: 1.15em;
+      animation: fadein .22s;
+    }
+    .modal .close-btn {
+      position: absolute; right: 13px; top: 10px; background: none;
+      border: none; font-size: 1.32em; color: #99c8ff; cursor: pointer;
+    }
+    .modal label { display: block; font-weight: 600; margin-top: 12px; }
+    .modal input, .modal textarea, .modal select {
+      margin: 10px 0 0 0; width: 100%; max-width: 380px;
+      font-size: 1.08em;
+    }
+    .modal textarea { min-height: 54px; }
+    .modal .modal-btns { margin-top: 15px; }
+    .modal-btns button {
+      font-size: 1.09em;
+      padding: 8px 22px;
+      border-radius: 8px;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      box-shadow: 0 2px 9px #10399a24;
+      font-weight: 600;
+      margin-right: 11px;
+      margin-bottom: 4px;
+      transition: background .15s, color .13s;
+    }
+    .modal-btns button:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .modal .avatar {
+      width: 72px; height: 72px; margin: 0 17px 0 0;
+      border-radius: 50%; background: #193768;
+      object-fit: cover; box-shadow: 0 2px 12px #2857fc33;
+      display: inline-block; vertical-align: top;
+    }
+    .char-info {
+      display: flex; align-items: center; gap: 10px;
+      margin: 0 0 8px 0;
+    }
+    .char-meta-blurb {
+      font-size: 1.06em;
+      color: #b1e2ff;
+      opacity: .9;
+      margin-bottom: 1px;
+    }
+    .char-rel-blurb {
+      color: #ffe7a9;
+      font-size: 1.02em;
+      margin-top: 0;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateY(36px);} to {opacity:1;transform:none;}}
+.fab-research {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 9999;
+  width: 62px;
+  height: 62px;
+  background: linear-gradient(130deg, #4befff 60%, #1958ca 100%);
+  border-radius: 50%;
+  box-shadow: 0 2px 22px #2b7aff66;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .14s, box-shadow .12s;
+}
+.fab-research:hover {
+  background: linear-gradient(110deg, #1958ca 40%, #4befff 100%);
+  box-shadow: 0 4px 34px #3be3ff99;
+}
+.fab-research .fab-icon {
+  font-size: 2em;
+  color: #14283c;
+  filter: drop-shadow(0 2px 4px #fffbe933);
+  user-select: none;
+}
+.fab-research:after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 78px;
+  right: 0;
+  background: #14283ccc;
+  color: #fffbb0;
+  padding: 6px 16px;
+  border-radius: 9px;
+  font-size: 1em;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .17s, transform .17s;
+  white-space: nowrap;
+}
+.fab-research:hover:after {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container">
+    <button onclick="window.location.href='dialogue_builder.html'" class="back-btn">⬅️ Back to Classic Dialogue</button>
+    <h1>Messenger Dialogue Tool</h1>
+    <div class="section">
+      <label>Characters Involved</label>
+      <div class="char-list" id="charList"></div>
+      <select id="charPicker"></select>
+      <button class="add-char-btn" onclick="addCharacter()">+ Add Character</button>
+    </div>
+
+    <!-- Meta bar for tags, status, scene, event, beat -->
+    <div class="meta-bar">
+      <label>Status:
+        <select id="statusPicker">
+          <option>Draft</option>
+          <option>Final</option>
+          <option>Needs Review</option>
+          <option>Flagged</option>
+          <option>Archived</option>
+        </select>
+      </label>
+      <label>Tags:</label>
+      <div class="tags" id="tagList"></div>
+      <input type="text" id="tagInput" placeholder="Add tag and press Enter" style="width:95px;" onkeydown="if(event.key==='Enter'){addTag();return false;}">
+      <label>Scene:
+        <select id="scenePicker"></select>
+      </label>
+      <label>Event:
+        <select id="eventPicker"></select>
+      </label>
+      <label>Beat:
+        <select id="beatPicker"></select>
+      </label>
+    </div>
+
+    <!-- Relationship grid for all character pairs -->
+    <div id="relationshipGrid" class="relationship-grid"></div>
+
+    <div class="messenger-view" id="messengerView">
+      <button class="add-char-btn" style="margin-bottom:13px;" onclick="openLineModal()">+ Add Line</button>
+      <div id="messengerLines"></div>
+    </div>
+    <button class="save-btn" onclick="saveDialogue()">💾 Save Dialogue</button>
+
+    <!-- Modal for Add/Edit Line -->
+    <div class="modal-bg" id="lineModalBg">
+      <div class="modal" onclick="event.stopPropagation()">
+        <button class="close-btn" onclick="closeLineModal()">×</button>
+        <div class="char-info">
+          <img class="avatar" id="modalAvatar" src="" alt="Avatar">
+          <div>
+            <div style="font-size:1.21em; font-weight:700;" id="modalSpeakerName"></div>
+            <div class="char-meta-blurb" id="modalSpeakerRole"></div>
+            <div class="char-rel-blurb" id="modalSpeakerRel"></div>
+          </div>
+        </div>
+        <label>Speaker:
+          <select id="modalSpeakerSelect" onchange="updateModalSpeaker()"></select>
+        </label>
+        <label>Dialogue:</label>
+        <textarea id="modalLineText" placeholder="Type dialogue line..."></textarea>
+        <label>Tone:</label>
+        <input type="text" id="modalLineTone" placeholder="E.g. serious, playful, mocking...">
+        <label>Notes:</label>
+        <input type="text" id="modalLineNotes" placeholder="Stage direction, subtext, etc.">
+        <div class="modal-btns">
+          <button onclick="saveLineFromModal()">Add</button>
+          <button onclick="closeLineModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // --- State ---
+    let dlgChars = [];
+    let messengerLines = [];
+    let editLineIdx = -1;
+    let dlgTags = [];
+    let dlgStatus = "Draft";
+    let dlgScene = "";
+    let dlgEvent = "";
+    let dlgBeat = "";
+
+    // --- Data ---
+    let characters = JSON.parse(localStorage.getItem("characters")||"[]");
+    let relationships = JSON.parse(localStorage.getItem("relationships")||"{}");
+    let dialogueList = JSON.parse(localStorage.getItem("dialogues")||"[]");
+    let projects = JSON.parse(localStorage.getItem("plotProjects")||"[]");
+    let currentProject = projects.length ? projects[0] : null;
+    let scenes = currentProject?.scenes || [];
+    let events = currentProject?.events || [];
+    let beats = currentProject?.beats || [];
+
+    // --- Tag system ---
+    function addTag() {
+      let input = document.getElementById('tagInput');
+      let tag = input.value.trim();
+      if (tag && !dlgTags.includes(tag)) {
+        dlgTags.push(tag);
+        renderTags();
+      }
+      input.value = "";
+    }
+    function removeTag(tag) {
+      dlgTags = dlgTags.filter(t => t !== tag);
+      renderTags();
+    }
+    function renderTags() {
+      let out = "";
+      dlgTags.forEach(tag => {
+        out += `<span class="tag">${tag} <button onclick="removeTag('${tag}')">×</button></span>`;
+      });
+      document.getElementById('tagList').innerHTML = out;
+    }
+
+    function populateCharPicker() {
+      let picker = document.getElementById('charPicker');
+      picker.innerHTML = "<option value=''>Choose Character...</option>";
+      characters.forEach(c => {
+        if (!dlgChars.includes(c.name))
+          picker.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+      });
+    }
+    function addCharacter() {
+      let picker = document.getElementById('charPicker');
+      let name = picker.value;
+      if (name && !dlgChars.includes(name)) {
+        dlgChars.push(name);
+        renderCharList();
+        picker.value = "";
+      }
+    }
+    function removeCharacter(name) {
+      dlgChars = dlgChars.filter(c => c !== name);
+      messengerLines = messengerLines.filter(l => dlgChars.includes(l.speaker));
+      renderCharList();
+      renderMessenger();
+      renderRelationshipGrid();
+    }
+    function renderCharList() {
+      let out = "";
+      dlgChars.forEach(c => {
+        out += `<span class="char-tag">${c} <button onclick="removeCharacter('${c}')">×</button></span>`;
+      });
+      document.getElementById('charList').innerHTML = out;
+      populateCharPicker();
+      renderRelationshipGrid();
+    }
+
+    // --- Populate scene/event/beat/status pickers ---
+    function populateMetaPickers() {
+      // Status
+      document.getElementById('statusPicker').value = dlgStatus;
+      // Scene
+      let sceneSel = document.getElementById('scenePicker');
+      sceneSel.innerHTML = "<option value=''>None</option>";
+      scenes.forEach((s,i) => {
+        sceneSel.innerHTML += `<option value="${i}">${s.title||("Scene "+(i+1))}</option>`;
+      });
+      sceneSel.value = dlgScene;
+      // Event
+      let eventSel = document.getElementById('eventPicker');
+      eventSel.innerHTML = "<option value=''>None</option>";
+      events.forEach((e,i) => {
+        eventSel.innerHTML += `<option value="${i}">${e.title||("Event "+(i+1))}</option>`;
+      });
+      eventSel.value = dlgEvent;
+      // Beat
+      let beatSel = document.getElementById('beatPicker');
+      beatSel.innerHTML = "<option value=''>None</option>";
+      beats.forEach((b,i) => {
+        beatSel.innerHTML += `<option value="${i}">${b.title||("Beat "+(i+1))}</option>`;
+      });
+      beatSel.value = dlgBeat;
+    }
+
+    // --- Relationship grid ---
+    function renderRelationshipGrid() {
+      let el = document.getElementById('relationshipGrid');
+      if (dlgChars.length < 2) {
+        el.innerHTML = "<span style='color:#9cdcff'>Add at least 2 characters to see relationships.</span>";
+        return;
+      }
+      let html = "";
+      for (let i = 0; i < dlgChars.length; ++i) {
+        for (let j = i+1; j < dlgChars.length; ++j) {
+          let a = dlgChars[i], b = dlgChars[j];
+          let relA = relationships[a]?.[b];
+          let relB = relationships[b]?.[a];
+          html += `<div class="relationship-row">
+            <span class="rel-label">${a} → ${b}:</span> ${
+              relA
+                ? `Type: <b>${relA.type||"?"}</b>, Strength: ${relA.strength||5}, Trust: ${relA.trust||5}, Influence: ${relA.influence||5}`
+                  + (relA.note ? `<span class='rel-desc'>, ${relA.note}</span>` : "")
+                : "<span style='color:#888;'>No direct relationship</span>"
+            }<br>
+            <span class="rel-label">${b} → ${a}:</span> ${
+              relB
+                ? `Type: <b>${relB.type||"?"}</b>, Strength: ${relB.strength||5}, Trust: ${relB.trust||5}, Influence: ${relB.influence||5}`
+                  + (relB.note ? `<span class='rel-desc'>, ${relB.note}</span>` : "")
+                : "<span style='color:#888;'>No direct relationship</span>"
+            }
+          </div>`;
+        }
+      }
+      el.innerHTML = html;
+    }
+
+    // --- Messenger Mode ---
+    function renderMessenger() {
+      let el = document.getElementById('messengerLines');
+      el.innerHTML = "";
+      if (dlgChars.length < 2) {
+        el.innerHTML = "<div style='color:#9cdcff; margin:20px;'>Add at least 2 characters to write a dialogue.</div>";
+        return;
+      }
+      const primary = dlgChars[0];
+      messengerLines.forEach((line, idx) => {
+        let char = getCharByName(line.speaker);
+        let side = (line.speaker === primary) ? "left" : "right";
+        el.innerHTML += `
+          <div class="bubble-row ${side}">
+            <img class="avatar" src="${char.image || 'https://via.placeholder.com/72x72?text=No+Image'}" alt="${char.name}">
+            <div>
+              <div class="bubble">${line.text || "<i>[No text]</i>"}</div>
+              <div class="bubble-meta">${char.name}${char.role ? " ("+char.role+")" : ""}${line.tone ? " | "+line.tone : ""}${line.notes ? "<br><i>"+line.notes+"</i>" : ""}</div>
+              <div class="bubble-btns">
+                <button onclick="editMessengerLine(${idx})">Edit</button>
+                <button onclick="deleteMessengerLine(${idx})">Delete</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    function getCharByName(name) {
+      return characters.find(c => c.name === name) || { name: name, role: "Unknown", image: "" };
+    }
+    function getRel(a, b) {
+      return relationships[a] && relationships[a][b] ? relationships[a][b] : null;
+    }
+
+    function openLineModal(idx = -1) {
+      if (dlgChars.length < 2) {
+        alert("Add at least 2 characters before adding dialogue!");
+        return;
+      }
+      editLineIdx = idx;
+      let sel = document.getElementById('modalSpeakerSelect');
+      sel.innerHTML = "";
+      dlgChars.forEach(charName => {
+        sel.innerHTML += `<option value="${charName}">${charName}</option>`;
+      });
+      let speaker = "";
+      let text = "", tone = "", notes = "";
+      if (idx >= 0 && messengerLines[idx]) {
+        speaker = messengerLines[idx].speaker;
+        text = messengerLines[idx].text;
+        tone = messengerLines[idx].tone;
+        notes = messengerLines[idx].notes;
+      } else {
+        speaker = dlgChars[0] || "";
+      }
+      sel.value = speaker;
+      document.getElementById('modalLineText').value = text;
+      document.getElementById('modalLineTone').value = tone;
+      document.getElementById('modalLineNotes').value = notes;
+      updateModalSpeaker();
+      document.getElementById('lineModalBg').style.display = "flex";
+    }
+
+    function updateModalSpeaker() {
+      let sel = document.getElementById('modalSpeakerSelect');
+      let name = sel.value;
+      let char = getCharByName(name);
+      document.getElementById('modalAvatar').src = char.image || "https://via.placeholder.com/72x72?text=No+Image";
+      document.getElementById('modalSpeakerName').innerText = char.name;
+      document.getElementById('modalSpeakerRole').innerText = char.role ? `Role: ${char.role}` : "";
+      let desc = char.description || "";
+      if (desc) {
+        document.getElementById('modalSpeakerRole').innerText += "\n" + desc;
+      }
+      // Show relationship to previous line's speaker
+      let rel = "";
+      if (messengerLines.length > 0) {
+        let prevIdx = editLineIdx > 0 ? editLineIdx-1 : messengerLines.length-1;
+        if (prevIdx >= 0 && messengerLines[prevIdx]) {
+          let prevSpeaker = messengerLines[prevIdx].speaker;
+          if (prevSpeaker && prevSpeaker !== name) {
+            let relObj = getRel(name, prevSpeaker);
+            if (relObj) {
+              rel = `Relationship to ${prevSpeaker}: ${relObj.type||""}, Trust: ${relObj.trust||5}, Influence: ${relObj.influence||5}${relObj.note ? " ("+relObj.note+")" : ""}`;
+            }
+          }
+        }
+      }
+      document.getElementById('modalSpeakerRel').innerText = rel;
+    }
+
+    function saveLineFromModal() {
+      let speaker = document.getElementById('modalSpeakerSelect').value;
+      let text = document.getElementById('modalLineText').value.trim();
+      let tone = document.getElementById('modalLineTone').value.trim();
+      let notes = document.getElementById('modalLineNotes').value.trim();
+      if (!text) {
+        alert("Dialogue line cannot be empty.");
+        return;
+      }
+      let line = { speaker, text, tone, notes };
+      if (editLineIdx >= 0) messengerLines[editLineIdx] = line;
+      else messengerLines.push(line);
+      closeLineModal();
+      renderMessenger();
+    }
+    function closeLineModal() {
+      document.getElementById('lineModalBg').style.display = "none";
+      editLineIdx = -1;
+    }
+    function editMessengerLine(idx) {
+      openLineModal(idx);
+    }
+    function deleteMessengerLine(idx) {
+      if (!confirm("Delete this line?")) return;
+      messengerLines.splice(idx,1);
+      renderMessenger();
+    }
+
+    // --- Save dialogue into main system ---
+    function saveDialogue() {
+      if (dlgChars.length < 2) { alert("Must have at least 2 characters!"); return; }
+      if (!messengerLines.length) { alert("Add at least one dialogue line."); return; }
+      let obj = {
+        characters: dlgChars.slice(),
+        tags: dlgTags.slice(),
+        scene: dlgScene,
+        event: dlgEvent,
+        beat: dlgBeat,
+        status: dlgStatus,
+        lines: JSON.parse(JSON.stringify(messengerLines)),
+        created: Date.now()
+      };
+      dialogueList.push(obj);
+      localStorage.setItem("dialogues", JSON.stringify(dialogueList));
+      alert("Dialogue saved!");
+      dlgChars = [];
+      messengerLines = [];
+      dlgTags = [];
+      dlgScene = "";
+      dlgEvent = "";
+      dlgBeat = "";
+      dlgStatus = "Draft";
+      renderTags();
+      renderCharList();
+      populateMetaPickers();
+      renderMessenger();
+      renderRelationshipGrid();
+    }
+
+    // --- Event handlers for meta fields
+    document.getElementById('statusPicker').onchange = function() { dlgStatus = this.value; };
+    document.getElementById('scenePicker').onchange = function() { dlgScene = this.value; };
+    document.getElementById('eventPicker').onchange = function() { dlgEvent = this.value; };
+    document.getElementById('beatPicker').onchange = function() { dlgBeat = this.value; };
+
+    // --- Init ---
+    document.addEventListener("DOMContentLoaded", () => {
+      populateCharPicker();
+      renderCharList();
+      populateMetaPickers();
+      renderTags();
+      renderMessenger();
+      renderRelationshipGrid();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Plot Engine</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --main-blue: #1958ca;
+      --main-blue-dark: #0a2352;
+      --accent-blue: #3b82f6;
+      --glass-bg: rgba(24,39,70,0.94);
+      --card-bg: rgba(255,255,255,0.12);
+    }
+    html, body { height: 100%; min-height: 100vh; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #e8ecfa;
+      margin: 0;
+      min-height: 100vh;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 36px auto 36px auto;
+      background: var(--glass-bg);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a55;
+      padding: 36px 32px 44px 32px;
+      border: 1.5px solid #3b82f666;
+      animation: fadein 0.7s;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateY(36px);} to {opacity:1;transform:none;}}
+    h1, h2, h3, h4 {
+      color: #fff;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+    h1 { font-size: 2.4em; margin-bottom: 8px;}
+    h2 { font-size: 1.28em; margin-top: 34px; margin-bottom: 10px;}
+    label {
+      display: block;
+      margin-top: 18px;
+      font-weight: 500;
+      color: #f0f4ff;
+      letter-spacing: 0.02em;
+    }
+    input, select, textarea {
+      width: 100%;
+      max-width: 480px;
+      padding: 10px 14px;
+      margin-top: 6px;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      font-size: 1.03em;
+      box-shadow: 0 1px 2px #10225233;
+      outline: none;
+      transition: border .18s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border: 1.8px solid var(--accent-blue);
+      background: #223d7b6b;
+    }
+    textarea {resize: vertical;}
+    .tags {
+      display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 0 0;
+    }
+    .tag {
+      background: #2563eb33;
+      border-radius: 4px;
+      padding: 3px 13px;
+      font-size: 0.99em;
+      color: #bee1fd;
+      border: 1.2px solid #3b82f655;
+      font-weight: 500;
+      transition: background .14s;
+      display: flex; align-items: center;
+    }
+    .tag button {
+      margin-left: 8px;
+      background: none;
+      border: none;
+      color: #60a5fa;
+      cursor: pointer;
+      font-size: 1.1em;
+      transition: color .14s;
+    }
+    .tag button:hover { color: #fff; }
+    .beat-list { margin-top: 32px; }
+    .beat-card {
+      background: var(--card-bg);
+      border: 1.5px solid #2953a950;
+      border-radius: 13px;
+      margin-bottom: 16px;
+      padding: 19px 22px;
+      box-shadow: 0 2px 16px #0a194e29;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      transition: background .16s, border .18s;
+    }
+    .beat-card:active { border: 2px solid #2563eb; background: #1c347b80; }
+    .beat-handle {
+      cursor: grab;
+      font-size: 1.5em;
+      color: #5e87da;
+      user-select: none;
+      margin-top: 3px;
+      margin-right: 7px;
+      text-shadow: 0 2px 5px #18235250;
+      transition: color .18s;
+    }
+    .beat-main { flex: 1; }
+    .beat-title { font-weight: 600; font-size: 1.08em; color: #b7d8fd; }
+    .beat-desc { margin: 8px 0 8px 0; color: #dde6ff; font-size: 1.02em;}
+    .beat-actions button,
+    .modal-actions button,
+    .add-beat,
+    .template-btn {
+      font-size: 1.07em;
+      padding: 7px 20px;
+      border-radius: 8px;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      box-shadow: 0 2px 9px #10399a24;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: background .15s, box-shadow .12s, color .14s;
+      margin-bottom: 6px;
+      margin-right: 8px;
+      margin-top: 0;
+      display: inline-block;
+    }
+    .beat-actions button:last-child,
+    .modal-actions button:last-child {
+      background: linear-gradient(92deg, #1d346e 20%, #3272c0 80%);
+      color: #aedcff;
+    }
+    .beat-actions button:hover,
+    .modal-actions button:hover,
+    .add-beat:hover,
+    .template-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+      box-shadow: 0 6px 22px #2c5ada22;
+    }
+    .beat-actions button[style*="color:#b22"] {
+      background: linear-gradient(92deg, #3b0a2d, #b22234 60%);
+      color: #fff !important;
+    }
+    .add-beat, .template-btn {
+      margin-top: 22px;
+      padding: 11px 28px;
+      border-radius: 9px;
+      font-size: 1.09em;
+      margin-bottom: 0;
+      margin-right: 10px;
+    }
+    .template-btn { margin-left: 10px; padding: 9px 15px;}
+    hr {
+      margin: 34px 0 24px 0;
+      border: none; height: 2px;
+      background: linear-gradient(to right, #3b82f6 0%, #143575 100%);
+      opacity: 0.28;
+      border-radius: 4px;
+    }
+    .edit-modal {
+      position: fixed; left: 0; top: 0; width: 100vw; height: 100vh;
+      background: rgba(11,28,51,0.41); display: flex; align-items: center; justify-content: center; z-index: 30;
+      animation: fadein .3s;
+    }
+    .modal-content {
+      background: #12244a;
+      padding: 32px 32px 24px 32px;
+      border-radius: 16px;
+      min-width: 340px;
+      box-shadow: 0 4px 32px #09337144;
+      border: 2px solid #214082;
+      color: #e3eeff;
+      max-width: 99vw;
+      animation: fadein .2s;
+    }
+    .modal-actions { text-align: right; margin-top: 18px; }
+    .guidance {
+      background: #1b3270;
+      border-radius: 7px;
+      padding: 10px 12px;
+      font-size: 1.03em;
+      color: #8ed2fd;
+      margin-bottom: 16px;
+      border: 1px solid #3b82f655;
+      box-shadow: 0 1px 6px #2162c222;
+    }
+    .template-list { margin: 16px 0 6px 0; }
+    .template-list h4 { margin: 10px 0 7px 0; color: #a6d7ff;}
+    .template-row { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+    .template-row button { font-size: 1em; }
+    .small-link {
+      color: #89c3ff;
+      background: none;
+      border: none;
+      font-size: 0.99em;
+      margin-left: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      text-decoration: underline;
+      padding: 3px 4px;
+      border-radius: 4px;
+      transition: color .13s, background .11s;
+    }
+    .small-link:hover { color: #fff; background: #3272c0;}
+    .small-link[title="Delete Template"] { color: #ffb0c0; background: none;}
+    .small-link[title="Delete Template"]:hover { background: #b22234; color: #fff;}
+    .custom-editor-beats { margin: 16px 0 4px 0; }
+    .custom-beat-card {
+      background: #193772;
+      border: 1.1px solid #3053aa88;
+      border-radius: 7px;
+      margin-bottom: 6px;
+      padding: 8px 8px 8px 12px;
+      display: flex; align-items: center; gap: 9px;
+      color: #c5e6ff;
+      box-shadow: 0 1px 4px #1958ca1e;
+    }
+    .custom-actions button {
+      margin-left: 7px;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-size: 0.99em;
+      font-weight: 600;
+      transition: background .13s, color .13s;
+    }
+    .custom-actions button:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
+    .custom-editor-actions { margin-top: 18px; text-align: right; }
+    ::selection { background: #1948c4; color: #fff;}
+    @media (max-width: 650px) {
+      .container { padding: 14px 2vw 25px 2vw; }
+      .modal-content { padding: 12px 2vw; }
+      .beat-card { padding: 11px 7px;}
+    }
+.fab-research {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 9999;
+  width: 62px;
+  height: 62px;
+  background: linear-gradient(130deg, #4befff 60%, #1958ca 100%);
+  border-radius: 50%;
+  box-shadow: 0 2px 22px #2b7aff66;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .14s, box-shadow .12s;
+}
+.fab-research:hover {
+  background: linear-gradient(110deg, #1958ca 40%, #4befff 100%);
+  box-shadow: 0 4px 34px #3be3ff99;
+}
+.fab-research .fab-icon {
+  font-size: 2em;
+  color: #14283c;
+  filter: drop-shadow(0 2px 4px #fffbe933);
+  user-select: none;
+}
+.fab-research:after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 78px;
+  right: 0;
+  background: #14283ccc;
+  color: #fffbb0;
+  padding: 6px 16px;
+  border-radius: 9px;
+  font-size: 1em;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .17s, transform .17s;
+  white-space: nowrap;
+}
+.fab-research:hover:after {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="fab-research" data-tooltip="Open Research Archive" onclick="window.open('research.html','_blank')">
+  <span class="fab-icon">🧠</span>
+</div>
+  <div class="container">
+    <h1>📚 Plot Engine</h1>
+    <form id="metaForm" onsubmit="saveMeta();return false;">
+      <label>Story Title
+        <input id="storyTitle" type="text" maxlength="80" placeholder="Title (e.g. The Last Gate)"/>
+      </label>
+      <label>Author
+        <input id="author" type="text" maxlength="60" placeholder="(Optional)"/>
+      </label>
+      <label>Type of Writing
+        <select id="type">
+          <option>Novel</option>
+          <option>Short Story</option>
+          <option>Screenplay</option>
+          <option>Game Narrative</option>
+          <option>Comic/Graphic Novel</option>
+          <option>Poetry</option>
+          <option>Essay</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Genre(s) / Subject
+        <div class="tags" id="genreTags"></div>
+        <input id="genreInput" type="text" maxlength="22" placeholder="Add a genre/tag & press Enter"/>
+      </label>
+      <label>Premise / Logline
+        <textarea id="premise" rows="2" maxlength="200" placeholder="e.g. When a city falls under a mysterious spell, an unlikely hero must..."></textarea>
+      </label>
+      <button type="submit" style="margin-top:16px" class="template-btn">💾 Save Core Info</button>
+    </form>
+
+    <hr />
+
+    <h2 style="margin-bottom:0">Plot Structure
+      <button class="template-btn" onclick="showTemplateMenu()">+ Import Template</button>
+      <button class="template-btn" onclick="showCustomTemplateEditor()">+ Create Custom Template</button>
+    </h2>
+    <div id="beatList" class="beat-list"></div>
+    <button class="add-beat" onclick="addBeat()">➕ Add Plot Beat</button>
+  </div>
+
+  <!-- Modal for editing a beat -->
+  <div class="edit-modal" id="editModal" style="display:none">
+    <div class="modal-content">
+      <div class="guidance" id="guidanceTip"></div>
+      <label>Title <input id="editTitle" type="text" maxlength="56"/></label>
+      <label>Description <textarea id="editDesc" rows="3" maxlength="180"></textarea></label>
+      <div class="modal-actions">
+        <button onclick="saveBeatEdit()">Save</button>
+        <button onclick="closeModal()" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for template import -->
+  <div class="edit-modal" id="templateModal" style="display:none">
+    <div class="modal-content">
+      <h3>Import Plot Structure Template</h3>
+      <div class="template-list" id="templateList"></div>
+      <div class="modal-actions">
+        <button onclick="closeTemplateModal()" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for custom template editor -->
+  <div class="edit-modal" id="customEditorModal" style="display:none">
+    <div class="modal-content">
+      <h3 id="customTemplateHeader">Create Custom Template</h3>
+      <label>Template Name <input id="customTemplateName" type="text" maxlength="40" /></label>
+      <div class="custom-editor-beats" id="customBeatsList"></div>
+      <button onclick="addCustomBeat()" style="margin-bottom:8px;" class="add-beat">+ Add Beat</button>
+      <div class="custom-editor-actions">
+        <button onclick="saveCustomTemplate()">Save Template</button>
+        <button onclick="closeCustomTemplateModal()" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for editing a beat inside custom template editor -->
+  <div class="edit-modal" id="editCustomBeatModal" style="display:none">
+    <div class="modal-content">
+      <label>Beat Title <input id="customBeatTitle" type="text" maxlength="56"/></label>
+      <label>Description/Guidance <textarea id="customBeatDesc" rows="2" maxlength="140"></textarea></label>
+      <div class="modal-actions">
+        <button onclick="saveCustomBeatEdit()">Save</button>
+        <button onclick="closeEditCustomBeatModal()" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    // ---- Plot Guidance for Example Structures ----
+    const beatGuidance = {
+      "Opening Image": "Set the tone and mood. What do we see before anything changes?",
+      "Inciting Incident": "What event disrupts the protagonist's world and launches the story?",
+      "First Plot Point": "A point of no return. What decision or event forces change?",
+      "Midpoint": "A twist or revelation changes stakes, direction, or knowledge.",
+      "Climax": "Ultimate confrontation or challenge. The story's highest tension.",
+      "Resolution": "Loose ends tied up; how do things look now?",
+      "Call to Adventure": "What beckons the hero away from their ordinary world?",
+      "Refusal of the Call": "Why does the hero hesitate? What's holding them back?",
+      "Meeting the Mentor": "Who gives advice, training, or an important tool?",
+      "Ordeal": "Biggest test so far. Will the hero prevail or fail?",
+      "Reward": "The hero gains something meaningful—what is it?",
+      "Return": "The hero comes back, changed—how is the world or they different?",
+      "Ki (Introduction)": "Introduce the setting, characters, and premise.",
+      "Shō (Development)": "Develop the story further, deepen context.",
+      "Ten (Twist)": "Introduce an unexpected turn or development.",
+      "Ketsu (Conclusion)": "Wrap up the story with a satisfying end.",
+      "Subject": "The topic or scene for the poem.",
+      "First Impression": "Opening sensory or emotional note.",
+      "Pivot/Contrast": "A shift in perspective or emotion.",
+      "Lasting Image": "What the reader is left with.",
+      "Exposition": "Introduce characters, setting, and background.",
+      "Rising Action": "Build tension with obstacles and complications.",
+      "Falling Action": "Events leading to resolution.",
+      "Denouement": "Conclusion; what has changed?",
+      // Essay guidance
+      "Introduction": "Open with a hook. Introduce your topic and thesis.",
+      "Body Paragraph 1": "Present your first main point and supporting evidence.",
+      "Body Paragraph 2": "Present your second main point and supporting evidence.",
+      "Body Paragraph 3": "Present your third main point and supporting evidence.",
+      "Conclusion": "Summarize your argument and leave the reader with a final thought.",
+      "Thesis": "State your main argument or claim.",
+      "Background/Context": "Provide necessary background for your topic.",
+      "Argument/Support": "Lay out supporting points for your thesis.",
+      "Counterarguments": "Present and address opposing views.",
+      "Point 1 (Both)": "Describe a similarity between the two subjects.",
+      "Point 2 (Difference A)": "Describe a key difference favoring Subject A.",
+      "Point 3 (Difference B)": "Describe a key difference favoring Subject B."
+    };
+
+    // ---- Plot Templates ----
+    const plotTemplates = {
+      threeAct: {
+        name: "Three Act Structure",
+        beats: [
+          { title: "Opening Image", description: "" },
+          { title: "Inciting Incident", description: "" },
+          { title: "First Plot Point", description: "" },
+          { title: "Midpoint", description: "" },
+          { title: "Second Plot Point", description: "" },
+          { title: "Climax", description: "" },
+          { title: "Resolution", description: "" },
+        ]
+      },
+      heroJourney: {
+        name: "Hero's Journey",
+        beats: [
+          { title: "Ordinary World", description: "" },
+          { title: "Call to Adventure", description: "" },
+          { title: "Refusal of the Call", description: "" },
+          { title: "Meeting the Mentor", description: "" },
+          { title: "Crossing the Threshold", description: "" },
+          { title: "Tests, Allies, Enemies", description: "" },
+          { title: "Approach", description: "" },
+          { title: "Ordeal", description: "" },
+          { title: "Reward", description: "" },
+          { title: "The Road Back", description: "" },
+          { title: "Resurrection", description: "" },
+          { title: "Return", description: "" },
+        ]
+      },
+      kishotenketsu: {
+        name: "Kishōtenketsu (Japanese 4-Part)",
+        beats: [
+          { title: "Ki (Introduction)", description: "Introduce the setting, characters, and premise." },
+          { title: "Shō (Development)", description: "Develop the story further, deepen context." },
+          { title: "Ten (Twist)", description: "Introduce an unexpected turn or development." },
+          { title: "Ketsu (Conclusion)", description: "Wrap up the story with a satisfying end." }
+        ]
+      },
+      fiveAct: {
+        name: "Five Act Structure (Freytag)",
+        beats: [
+          { title: "Exposition", description: "" },
+          { title: "Rising Action", description: "" },
+          { title: "Climax", description: "" },
+          { title: "Falling Action", description: "" },
+          { title: "Denouement", description: "" }
+        ]
+      },
+      poetry: {
+        name: "Poetry/Haiku Model",
+        beats: [
+          { title: "Subject", description: "The topic or scene for the poem." },
+          { title: "First Impression", description: "Opening sensory or emotional note." },
+          { title: "Pivot/Contrast", description: "A shift in perspective or emotion." },
+          { title: "Lasting Image", description: "What the reader is left with." }
+        ]
+      },
+      essayFivePara: {
+        name: "Essay – Five Paragraph",
+        beats: [
+          { title: "Introduction", description: "" },
+          { title: "Body Paragraph 1", description: "" },
+          { title: "Body Paragraph 2", description: "" },
+          { title: "Body Paragraph 3", description: "" },
+          { title: "Conclusion", description: "" }
+        ]
+      },
+      essayArgument: {
+        name: "Essay – Argumentative",
+        beats: [
+          { title: "Introduction", description: "" },
+          { title: "Thesis", description: "" },
+          { title: "Background/Context", description: "" },
+          { title: "Argument/Support", description: "" },
+          { title: "Counterarguments", description: "" },
+          { title: "Conclusion", description: "" }
+        ]
+      },
+      essayCompare: {
+        name: "Essay – Compare & Contrast",
+        beats: [
+          { title: "Introduction", description: "" },
+          { title: "Point 1 (Both)", description: "" },
+          { title: "Point 2 (Difference A)", description: "" },
+          { title: "Point 3 (Difference B)", description: "" },
+          { title: "Conclusion", description: "" }
+        ]
+      },
+      blank: {
+        name: "Blank (Start Fresh)",
+        beats: []
+      }
+    };
+
+    // ---- Custom Templates ----
+    function getCustomTemplates() {
+      return JSON.parse(localStorage.getItem("plotCustomTemplates") || "[]");
+    }
+    function setCustomTemplates(arr) {
+      localStorage.setItem("plotCustomTemplates", JSON.stringify(arr));
+    }
+
+    // ---- Core Data Model ----
+    let doc = {
+      meta: {
+        storyTitle: "",
+        author: "",
+        type: "Novel",
+        genres: [],
+        premise: "",
+      },
+      beats: [],
+    };
+    let editingIndex = null;
+
+    // ---- Load/Save Logic ----
+    function saveDoc() {
+      localStorage.setItem("plotDocument", JSON.stringify(doc));
+    }
+    function loadDoc() {
+      const str = localStorage.getItem("plotDocument");
+      if (str) {
+        try {
+          doc = JSON.parse(str);
+        } catch (e) { /* fallback to blank */ }
+      }
+    }
+
+    // ---- Render Metadata ----
+    function renderMeta() {
+      document.getElementById("storyTitle").value = doc.meta.storyTitle || "";
+      document.getElementById("author").value = doc.meta.author || "";
+      document.getElementById("type").value = doc.meta.type || "Novel";
+      document.getElementById("premise").value = doc.meta.premise || "";
+      renderTags();
+    }
+    function saveMeta() {
+      doc.meta.storyTitle = document.getElementById("storyTitle").value;
+      doc.meta.author = document.getElementById("author").value;
+      doc.meta.type = document.getElementById("type").value;
+      doc.meta.premise = document.getElementById("premise").value;
+      saveDoc();
+      alert("Core info saved!");
+    }
+
+    // ---- Genre Tags ----
+    function renderTags() {
+      const tagDiv = document.getElementById("genreTags");
+      tagDiv.innerHTML = "";
+      (doc.meta.genres || []).forEach((tag, i) => {
+        const span = document.createElement("span");
+        span.className = "tag";
+        span.innerHTML = tag + ' <button onclick="removeTag(' + i + ')">×</button>';
+        tagDiv.appendChild(span);
+      });
+    }
+    function removeTag(i) {
+      doc.meta.genres.splice(i, 1);
+      saveDoc();
+      renderTags();
+    }
+    document.getElementById("genreInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && this.value.trim()) {
+        if (!doc.meta.genres) doc.meta.genres = [];
+        if (!doc.meta.genres.includes(this.value.trim())) {
+          doc.meta.genres.push(this.value.trim());
+        }
+        this.value = "";
+        saveDoc();
+        renderTags();
+        e.preventDefault();
+      }
+    });
+
+    // ---- Plot Beat List ----
+    function renderBeats() {
+      const beatList = document.getElementById("beatList");
+      beatList.innerHTML = "";
+      doc.beats.forEach((b, i) => {
+        const div = document.createElement("div");
+        div.className = "beat-card";
+        div.draggable = true;
+        div.ondragstart = ev => { ev.dataTransfer.setData("beatIndex", i); };
+        div.ondragover = ev => { ev.preventDefault(); div.style.background = "#2045a380"; };
+        div.ondragleave = ev => { div.style.background = "var(--card-bg)"; };
+        div.ondrop = ev => {
+          ev.preventDefault();
+          const from = +ev.dataTransfer.getData("beatIndex");
+          if (from !== i) {
+            const [beat] = doc.beats.splice(from, 1);
+            doc.beats.splice(i, 0, beat);
+            saveDoc();
+            renderBeats();
+          }
+        };
+
+        // Handle for drag
+        const handle = document.createElement("div");
+        handle.className = "beat-handle";
+        handle.textContent = "☰";
+        div.appendChild(handle);
+
+        // Main content
+        const main = document.createElement("div");
+        main.className = "beat-main";
+        main.innerHTML = `
+          <div class="beat-title">${b.title || "<i>(Untitled)</i>"}</div>
+          <div class="beat-desc">${b.description || ""}</div>
+        `;
+        div.appendChild(main);
+
+        // Actions
+        const actions = document.createElement("div");
+        actions.className = "beat-actions";
+        actions.innerHTML =
+          `<button onclick="editBeat(${i})">✎ Edit</button>
+           <button onclick="moveBeat(${i},-1)">↑</button>
+           <button onclick="moveBeat(${i},1)">↓</button>
+           <button onclick="deleteBeat(${i})" style="color:#b22">🗑️</button>`;
+        div.appendChild(actions);
+
+        beatList.appendChild(div);
+      });
+    }
+
+    function addBeat() {
+      doc.beats.push({ title: "", description: "" });
+      saveDoc();
+      renderBeats();
+      editBeat(doc.beats.length - 1);
+    }
+    function editBeat(i) {
+      editingIndex = i;
+      document.getElementById("editTitle").value = doc.beats[i].title || "";
+      document.getElementById("editDesc").value = doc.beats[i].description || "";
+      // Show guidance if available
+      const tip = beatGuidance[doc.beats[i].title] || "";
+      document.getElementById("guidanceTip").textContent = tip ? "Tip: " + tip : "";
+      document.getElementById("editModal").style.display = "";
+    }
+    function saveBeatEdit() {
+      if (editingIndex === null) return;
+      doc.beats[editingIndex].title = document.getElementById("editTitle").value;
+      doc.beats[editingIndex].description = document.getElementById("editDesc").value;
+      saveDoc();
+      renderBeats();
+      closeModal();
+    }
+    function closeModal() {
+      editingIndex = null;
+      document.getElementById("editModal").style.display = "none";
+    }
+    function moveBeat(i, dir) {
+      const j = i + dir;
+      if (j < 0 || j >= doc.beats.length) return;
+      [doc.beats[i], doc.beats[j]] = [doc.beats[j], doc.beats[i]];
+      saveDoc();
+      renderBeats();
+    }
+    function deleteBeat(i) {
+      if (!confirm("Delete this plot beat?")) return;
+      doc.beats.splice(i, 1);
+      saveDoc();
+      renderBeats();
+    }
+
+    // ---- Template Import ----
+    function showTemplateMenu() {
+      renderTemplateList();
+      document.getElementById("templateModal").style.display = "";
+    }
+    function closeTemplateModal() {
+      document.getElementById("templateModal").style.display = "none";
+    }
+    function importTemplateFromObj(obj) {
+      if (!confirm("Replace current plot structure? This will overwrite your current beats.")) return;
+      doc.beats = obj.beats.map(b => ({ ...b }));
+      saveDoc();
+      renderBeats();
+      closeTemplateModal();
+    }
+    function renderTemplateList() {
+      const div = document.getElementById("templateList");
+      div.innerHTML = "";
+      // Built-in templates
+      div.innerHTML += `<h4>Built-in</h4>`;
+      Object.entries(plotTemplates).forEach(([k, t]) => {
+        if (k === "blank") return; // Skip blank at top
+        div.innerHTML += `
+        <div class="template-row">
+          <button onclick="importTemplateFromObj(plotTemplates['${k}'])">${t.name}</button>
+        </div>`;
+      });
+      // Blank last
+      div.innerHTML += `
+        <div class="template-row"><button onclick="importTemplateFromObj(plotTemplates['blank'])">${plotTemplates.blank.name}</button></div>
+      `;
+      // Custom templates
+      const customs = getCustomTemplates();
+      if (customs.length > 0) {
+        div.innerHTML += `<h4>Custom Templates</h4>`;
+        customs.forEach((tmpl, i) => {
+          div.innerHTML += `
+            <div class="template-row">
+              <button onclick="importCustomTemplate(${i})">${tmpl.name || "Untitled"}</button>
+              <button class="small-link" onclick="editCustomTemplate(${i})" title="Edit Template">Edit</button>
+              <button class="small-link" onclick="deleteCustomTemplate(${i})" title="Delete Template">Delete</button>
+            </div>
+          `;
+        });
+      }
+    }
+    function importCustomTemplate(idx) {
+      const customs = getCustomTemplates();
+      if (!customs[idx]) return;
+      importTemplateFromObj(customs[idx]);
+    }
+    function deleteCustomTemplate(idx) {
+      if (!confirm("Delete this custom template?")) return;
+      const customs = getCustomTemplates();
+      customs.splice(idx, 1);
+      setCustomTemplates(customs);
+      renderTemplateList();
+    }
+
+    // ---- Custom Template Editor ----
+    let editingCustomIdx = null;
+    let editingCustomBeatIdx = null;
+    let customTmpl = { name: "", beats: [] };
+
+    function showCustomTemplateEditor(isEdit=false) {
+      editingCustomIdx = null;
+      customTmpl = { name: "", beats: [] };
+      document.getElementById("customTemplateHeader").innerText = "Create Custom Template";
+      document.getElementById("customTemplateName").value = "";
+      renderCustomBeatsList();
+      document.getElementById("customEditorModal").style.display = "";
+    }
+    function editCustomTemplate(idx) {
+      const customs = getCustomTemplates();
+      if (!customs[idx]) return;
+      editingCustomIdx = idx;
+      customTmpl = JSON.parse(JSON.stringify(customs[idx]));
+      document.getElementById("customTemplateHeader").innerText = "Edit Custom Template";
+      document.getElementById("customTemplateName").value = customTmpl.name || "";
+      renderCustomBeatsList();
+      document.getElementById("customEditorModal").style.display = "";
+    }
+    function closeCustomTemplateModal() {
+      editingCustomIdx = null;
+      customTmpl = { name: "", beats: [] };
+      document.getElementById("customEditorModal").style.display = "none";
+    }
+    function addCustomBeat() {
+      customTmpl.beats.push({ title: "", description: "" });
+      renderCustomBeatsList();
+      editCustomBeat(customTmpl.beats.length-1);
+    }
+    function renderCustomBeatsList() {
+      const list = document.getElementById("customBeatsList");
+      list.innerHTML = "";
+      customTmpl.beats.forEach((b, i) => {
+        const div = document.createElement("div");
+        div.className = "custom-beat-card";
+        div.innerHTML = `
+          <span><b>${b.title || "(Untitled)"}</b></span>
+          <span style="color:#b6e4fa">${b.description || ""}</span>
+          <span class="custom-actions">
+            <button onclick="editCustomBeat(${i})">✎</button>
+            <button onclick="moveCustomBeat(${i},-1)">↑</button>
+            <button onclick="moveCustomBeat(${i},1)">↓</button>
+            <button onclick="deleteCustomBeat(${i})" style="color:#f33">🗑️</button>
+          </span>
+        `;
+        list.appendChild(div);
+      });
+    }
+    function editCustomBeat(idx) {
+      editingCustomBeatIdx = idx;
+      document.getElementById("customBeatTitle").value = customTmpl.beats[idx].title || "";
+      document.getElementById("customBeatDesc").value = customTmpl.beats[idx].description || "";
+      document.getElementById("editCustomBeatModal").style.display = "";
+    }
+    function saveCustomBeatEdit() {
+      if (editingCustomBeatIdx === null) return;
+      customTmpl.beats[editingCustomBeatIdx].title = document.getElementById("customBeatTitle").value;
+      customTmpl.beats[editingCustomBeatIdx].description = document.getElementById("customBeatDesc").value;
+      renderCustomBeatsList();
+      closeEditCustomBeatModal();
+    }
+    function closeEditCustomBeatModal() {
+      editingCustomBeatIdx = null;
+      document.getElementById("editCustomBeatModal").style.display = "none";
+    }
+    function moveCustomBeat(i, dir) {
+      const j = i + dir;
+      if (j < 0 || j >= customTmpl.beats.length) return;
+      [customTmpl.beats[i], customTmpl.beats[j]] = [customTmpl.beats[j], customTmpl.beats[i]];
+      renderCustomBeatsList();
+    }
+    function deleteCustomBeat(i) {
+      if (!confirm("Delete this beat?")) return;
+      customTmpl.beats.splice(i, 1);
+      renderCustomBeatsList();
+    }
+    function saveCustomTemplate() {
+      const name = document.getElementById("customTemplateName").value.trim();
+      if (!name) return alert("Template name required.");
+      if (!customTmpl.beats.length) return alert("Add at least one beat!");
+      customTmpl.name = name;
+      const customs = getCustomTemplates();
+      if (editingCustomIdx !== null) {
+        customs[editingCustomIdx] = JSON.parse(JSON.stringify(customTmpl));
+      } else {
+        customs.push(JSON.parse(JSON.stringify(customTmpl)));
+      }
+      setCustomTemplates(customs);
+      closeCustomTemplateModal();
+      closeTemplateModal();
+    }
+
+    // ---- Initialization ----
+    loadDoc();
+    renderMeta();
+    renderBeats();
+  </script>
+</body>
+</html>

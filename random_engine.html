@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Random Combo Engine • Story Beats</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111825; --panel-2:#0f1622; --text:#e6eef8; --muted:#a7b3c5; --accent:#7c9cff; --warn:#ffcc66; --card:#0f1725; --shadow:0 10px 30px rgba(0,0,0,.35),0 0 0 1px rgba(124,156,255,0.08) inset; --radius:18px;
+  }
+  body{margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, sans-serif;}
+  header{background:linear-gradient(180deg,rgba(11,15,20,.9),rgba(11,15,20,.5)); border-bottom:1px solid rgba(124,156,255,.15); padding:14px 20px; position:sticky; top:0; z-index:10;}
+  h1{margin:0; font-size:1.4rem}
+  main{padding:20px; max-width:1150px; margin:auto}
+  .grid{display:flex; gap:14px; overflow-x:auto}
+  .col{background:linear-gradient(160deg,var(--card),var(--panel)); border-radius:var(--radius); box-shadow:var(--shadow); padding:10px; min-width:200px; display:flex; flex-direction:column; gap:6px;}
+  .col input{padding:6px 8px; border-radius:6px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:var(--text);}
+  .col .title{font-weight:600; text-align:center}
+  .btn{padding:6px 10px; border-radius:8px; border:1px solid rgba(124,156,255,.35); background:linear-gradient(180deg,rgba(124,156,255,.2),rgba(124,156,255,.05)); color:var(--text); cursor:pointer; font-size:0.9rem;}
+  .btn.danger{border-color:rgba(255,124,124,.4); color:#ffb0b0}
+  .result{margin-top:20px; padding:14px; border-radius:var(--radius); border:1px solid rgba(124,156,255,.25); background:linear-gradient(180deg,rgba(124,156,255,.08),rgba(124,156,255,.02)); font-weight:600; font-size:1.1rem;}
+  .favorites{margin-top:20px}
+  .fav-item{display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); padding:6px 10px; border-radius:6px; margin-bottom:6px;}
+  .fab-research{position:fixed; right:32px; bottom:32px; z-index:9999; width:62px; height:62px; background:linear-gradient(130deg,#4befff 60%,#1958ca 100%); border-radius:50%; box-shadow:0 2px 22px #2b7aff66; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .14s,box-shadow .12s;}
+  .fab-research:hover{background:linear-gradient(110deg,#1958ca 40%,#4befff 100%);box-shadow:0 4px 34px #3be3ff99}
+  .fab-icon{font-size:2em; color:#14283c; filter:drop-shadow(0 2px 4px #fffbe933)}
+</style>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+<header>
+  <button class="btn" onclick="goBack()">↩ Back to Hub</button>
+  <h1>🧩 Random Combo Engine</h1>
+</header>
+<main>
+  <div class="grid" id="categoryGrid"></div>
+  <button class="btn" onclick="addCategory()">+ Add Category</button>
+  <div style="margin-top:16px">
+    <button class="btn" onclick="generateCombo()">🎲 Generate</button>
+    <button class="btn" onclick="saveFavorite()">⭐ Save Favorite</button>
+    <button class="btn" onclick="exportFavorites()">⬇ Export Favorites</button>
+  </div>
+  <div class="result" id="result">—</div>
+  <div class="favorites" id="favorites"></div>
+</main>
+<div class="fab-research" data-tooltip="Open Research Archive" onclick="openResearch()">
+  <span class="fab-icon">🧠</span>
+</div>
+<script>
+const url = new URL(location.href);
+const projectId = url.searchParams.get('projectId') || 'default';
+const key = (name) => `sb:rgengine:${projectId}:${name}`;
+
+function loadConfig(){
+  let cfg = JSON.parse(localStorage.getItem(key('config'))||'null');
+  if(!cfg){
+    cfg = [
+      {title:'Character', items:['Villain','Mentor','Rebel','Outsider','Trickster']},
+      {title:'Setting', items:['Desert Outpost','Urban Ruins','Haunted Forest','Space Colony','Underwater City']},
+      {title:'Conflict', items:['Betrayal','Forbidden Love','Political Intrigue','Survival Challenge','Moral Dilemma']},
+      {title:'Twist', items:['Time Loop','Secret Identity','Double Agent','Ancient Curse','Unseen Puppetmaster']},
+      {title:'Tone/Mood', items:['Hopeful','Ominous','Tragic','Whimsical','Chaotic']}
+    ];
+  }
+  return cfg;
+}
+function saveConfig(cfg){localStorage.setItem(key('config'),JSON.stringify(cfg));}
+
+function renderGrid(){
+  const grid = document.getElementById('categoryGrid');
+  grid.innerHTML='';
+  cfg.forEach((col,ci)=>{
+    const div=document.createElement('div');
+    div.className='col';
+    div.innerHTML=`<input class="title" value="${col.title}" onchange="updateTitle(${ci},this.value)">`;
+    col.items.forEach((item,ri)=>{
+      div.innerHTML+=`<div style=\"display:flex;gap:4px;\"><input value=\"${item}\" onchange=\"updateItem(${ci},${ri},this.value)\"><button class=\"btn danger\" onclick=\"removeRow(${ci},${ri})\">✕</button></div>`;
+    });
+    div.innerHTML+=`<button class="btn" onclick="addRow(${ci})">+ Row</button>`;
+    div.innerHTML+=`<button class="btn danger" onclick="removeCategory(${ci})">Remove Category</button>`;
+    grid.appendChild(div);
+  });
+}
+function updateTitle(ci,val){cfg[ci].title=val;saveConfig(cfg);}
+function updateItem(ci,ri,val){cfg[ci].items[ri]=val;saveConfig(cfg);}
+function addCategory(){if(cfg.length<5){cfg.push({title:'New Category',items:['']});saveConfig(cfg);renderGrid();}}
+function removeCategory(ci){cfg.splice(ci,1);saveConfig(cfg);renderGrid();}
+function addRow(ci){cfg[ci].items.push('');saveConfig(cfg);renderGrid();}
+function removeRow(ci,ri){cfg[ci].items.splice(ri,1);saveConfig(cfg);renderGrid();}
+function generateCombo(){
+  const picks = cfg.map(c=>{
+    const choices=c.items.filter(v=>v.trim());
+    return choices.length?choices[Math.floor(Math.random()*choices.length)]:'—';
+  });
+  document.getElementById('result').textContent = picks.join(' • ');
+}
+function saveFavorite(){
+  const favs = JSON.parse(localStorage.getItem(key('favorites'))||'[]');
+  const val=document.getElementById('result').textContent;
+  if(val && val!=='—'){favs.unshift(val);localStorage.setItem(key('favorites'),JSON.stringify(favs));renderFavorites();}
+}
+function renderFavorites(){
+  const wrap=document.getElementById('favorites');
+  const favs=JSON.parse(localStorage.getItem(key('favorites'))||'[]');
+  wrap.innerHTML='<h3>Favorites</h3>';
+  favs.forEach((f,i)=>{
+    const div=document.createElement('div');
+    div.className='fav-item';
+    div.innerHTML=`<span>${f}</span><button class="btn danger" onclick="delFavorite(${i})">✕</button>`;
+    wrap.appendChild(div);
+  });
+}
+function delFavorite(i){
+  const favs=JSON.parse(localStorage.getItem(key('favorites'))||'[]');
+  favs.splice(i,1);localStorage.setItem(key('favorites'),JSON.stringify(favs));renderFavorites();
+}
+function exportFavorites(){
+  const favs=JSON.parse(localStorage.getItem(key('favorites'))||'[]');
+  const blob=new Blob([JSON.stringify({projectId,favorites:favs},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`favorites-${projectId}.json`;a.click();
+}
+function goBack(){location.href=`project_core.html?projectId=${encodeURIComponent(projectId)}`;}
+function openResearch(){location.href=`research.html?projectId=${encodeURIComponent(projectId)}`;}
+
+let cfg = loadConfig();
+renderGrid();
+renderFavorites();
+</script>
+</body>
+</html>

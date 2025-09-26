@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Location Creator</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #143575 60%, #1958ca 100%); color: #e8ecfa; margin: 0; min-height: 100vh;}
+    .container { max-width: 550px; margin: 38px auto 24px auto; background: rgba(24,39,70,0.97); border-radius: 18px; box-shadow: 0 4px 28px #06103a77; padding: 36px 28px 32px 28px; border: 1.5px solid #3b82f644;}
+    h1 { font-size: 2em; margin-bottom: 14px; color: #fff;}
+    .dashboard-btn, .profile-btn { background: linear-gradient(92deg, #2671f2, #2959de 90%); color: #fff; border: none; border-radius: 8px; font-weight: 600; font-size: 1em; padding: 8px 20px; margin-bottom: 12px; cursor: pointer; transition: background .15s, color .14s; box-shadow: 0 2px 9px #10399a24; margin-right: 12px; margin-top: 0;}
+    .dashboard-btn:hover, .profile-btn:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
+    form label { display:block; margin-top:15px; font-weight: 500;}
+    input[type="text"], textarea, select { width:100%; padding:8px 10px; border-radius:6px; border:1.2px solid #284687; background: #19306a44; color: #e8ecfa; font-size: 1.04em; margin-top:5px;}
+    textarea { resize:vertical;}
+    .tags, .objects { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0 0;}
+    .tag, .obj, .actnote { background:#19306a55; border-radius:5px; padding:3px 13px; font-size:1em; color:#aee5ff; border:1px solid #3b82f644; cursor:pointer;}
+    .tag button, .obj button, .actnote button { margin-left:7px; background:none; border:none; color:#fff; font-size:1em; cursor:pointer;}
+    .tag button:hover, .obj button:hover, .actnote button:hover { color: #a42034;}
+    .slider-bar {display:flex; align-items:center; gap:10px; margin-top:8px;}
+    .slider-label {font-size:1.06em; color:#aee5ff;}
+    .img-btns {display:flex; gap:7px; margin-top:6px;}
+    .img-preview {width: 100%; max-width: 340px; max-height: 110px; margin-top: 7px; margin-bottom: 7px; border-radius: 7px;}
+    .img-url-input {width: calc(100% - 40px);}
+    .timeline-bar {margin-top:9px;}
+    .timeline-entry {background:#203a64; border-radius:7px; padding:7px 11px 7px 9px; color:#e5efff; margin-bottom:7px; font-size:.99em; display:flex; align-items:center; gap:7px;}
+    .timeline-entry input[type="text"] {max-width:60px; margin:0;}
+    .timeline-entry button {background:none; border:none; color:#a42034; font-size:1.15em; cursor:pointer; margin-left:7px;}
+    .form-actions {text-align:right; margin-top:14px;}
+    .form-actions button { font-size:1.08em; margin-left:10px; }
+    @media (max-width:700px) { .container { padding: 10px 2vw 16px 2vw; } }
+.fab-research {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 9999;
+  width: 62px;
+  height: 62px;
+  background: linear-gradient(130deg, #4befff 60%, #1958ca 100%);
+  border-radius: 50%;
+  box-shadow: 0 2px 22px #2b7aff66;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .14s, box-shadow .12s;
+}
+.fab-research:hover {
+  background: linear-gradient(110deg, #1958ca 40%, #4befff 100%);
+  box-shadow: 0 4px 34px #3be3ff99;
+}
+.fab-research .fab-icon {
+  font-size: 2em;
+  color: #14283c;
+  filter: drop-shadow(0 2px 4px #fffbe933);
+  user-select: none;
+}
+.fab-research:after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 78px;
+  right: 0;
+  background: #14283ccc;
+  color: #fffbb0;
+  padding: 6px 16px;
+  border-radius: 9px;
+  font-size: 1em;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .17s, transform .17s;
+  white-space: nowrap;
+}
+.fab-research:hover:after {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <button onclick="window.location.href='dashboard.html'" class="dashboard-btn">← Dashboard</button>
+      <button onclick="gotoProfiles()" class="profile-btn">📚 Location Profiles</button>
+    </div>
+    <h1 id="projTitle">Location Creator</h1>
+    <form id="locForm" onsubmit="saveLoc();return false;">
+      <label>Name
+        <input id="locName" type="text" maxlength="48" placeholder="Location/Setting Name" required />
+      </label>
+      <label>Type
+        <input id="locType" type="text" maxlength="32" placeholder="e.g. City, Room, Forest, World" />
+      </label>
+      <label>Tags
+        <div class="tags" id="locTags"></div>
+        <input id="locTagInput" type="text" maxlength="18" placeholder="Add tag & press Enter"/>
+      </label>
+      <label>Description/Notes
+        <textarea id="locDesc" rows="3" maxlength="180" placeholder="Describe or note this location"></textarea>
+      </label>
+      <label>Image
+        <div class="img-btns">
+          <input id="locImgFile" type="file" accept="image/*" style="display:none;">
+          <button type="button" onclick="document.getElementById('locImgFile').click()">Upload Image</button>
+          <button type="button" onclick="addImgFromURL()">From URL</button>
+          <button type="button" onclick="clearImgPreview()">Remove</button>
+        </div>
+        <input id="locImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
+        <img id="locImgPreview" class="img-preview" style="display:none;">
+      </label>
+      <label>Significance/Importance
+        <div class="slider-bar">
+          <input type="range" id="locWeight" min="1" max="10" value="5" oninput="updateSliderLabel()">
+          <span id="sliderVal" class="slider-label"></span>
+        </div>
+      </label>
+      <label>Atmosphere / Mood
+        <input id="locMood" type="text" maxlength="64" placeholder="e.g. Eerie, Busy, Magical, Gloomy" />
+      </label>
+      <label>Objects/Props
+        <div class="objects" id="locObjs"></div>
+        <input id="locObjInput" type="text" maxlength="24" placeholder="Add object/prop & press Enter"/>
+      </label>
+      <label>Timeline of Change
+        <div class="timeline-bar" id="timelineBar"></div>
+        <button type="button" onclick="addTimelineEntry()">+ Add Timeline Point</button>
+      </label>
+      <div class="form-actions">
+        <button type="submit">💾 Save Location</button>
+        <button type="button" onclick="clearForm()">+ New Location</button>
+      </div>
+    </form>
+  </div>
+  <script>
+    // --- Project Data ---
+    function getQueryParam(name) { let params = new URLSearchParams(window.location.search); return params.get(name);}
+    function getProjects() { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
+    function setProjects(arr) { localStorage.setItem("plotProjects", JSON.stringify(arr)); }
+    let projectId = getQueryParam("id"), project=null, locations=[];
+    let modalTags=[], modalObjs=[], modalImg=null, modalTimeline=[];
+    function loadProject() {
+      if (!projectId) { alert("No project ID."); window.location.href = "dashboard.html"; return; }
+      let arr = getProjects();
+      project = arr.find(p => p.id === projectId);
+      if (!project) { alert("Project not found."); window.location.href = "dashboard.html"; return; }
+      if (!project.locations) project.locations = [];
+      locations = project.locations;
+      document.getElementById('projTitle').textContent = "Location Creator: " + (project.meta.storyTitle || "Untitled");
+      clearForm();
+      updateSliderLabel();
+    }
+    function saveProject() { project.locations = locations; let arr = getProjects(); let idx = arr.findIndex(p => p.id === projectId); if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; setProjects(arr);}}
+    // --- Form Logic ---
+    function saveLoc() {
+      let name = document.getElementById('locName').value.trim();
+      let type = document.getElementById('locType').value.trim();
+      let tags = modalTags.slice();
+      let desc = document.getElementById('locDesc').value.trim();
+      let img = modalImg;
+      let weight = parseInt(document.getElementById('locWeight').value) || 5;
+      let mood = document.getElementById('locMood').value.trim();
+      let objects = modalObjs.slice();
+      let timeline = modalTimeline.slice();
+      if (!name) return alert("Name required.");
+      let obj = { name, type, tags, desc, img, weight, mood, objects, timeline };
+      // check if editing (by name), otherwise add
+      let idx = locations.findIndex(l=>l.name===name);
+      if (idx !== -1) locations[idx] = obj;
+      else locations.push(obj);
+      saveProject();
+      clearForm();
+      alert("Location saved!");
+    }
+    function clearForm() {
+      document.getElementById('locName').value = "";
+      document.getElementById('locType').value = "";
+      modalTags = []; renderModalTags();
+      document.getElementById('locDesc').value = "";
+      modalImg = null; updateImgPreview();
+      document.getElementById('locWeight').value = 5; updateSliderLabel();
+      document.getElementById('locMood').value = "";
+      modalObjs = []; renderModalObjs();
+      modalTimeline = []; renderTimeline();
+    }
+    function gotoProfiles() { window.location.href = "location_profiles.html?id="+encodeURIComponent(projectId); }
+    // --- Tags/Objects ---
+    function renderModalTags() { const tagDiv = document.getElementById("locTags"); tagDiv.innerHTML = ""; modalTags.forEach((tag, i) => { const span = document.createElement("span"); span.className = "tag"; span.innerHTML = tag + ' <button onclick="removeModalTag(' + i + ')">×</button>'; tagDiv.appendChild(span);}); }
+    function removeModalTag(i) { modalTags.splice(i, 1); renderModalTags(); }
+    document.getElementById("locTagInput").addEventListener("keydown", function (e) { if (e.key === "Enter" && this.value.trim()) { if (!modalTags.includes(this.value.trim())) { modalTags.push(this.value.trim()); } this.value = ""; renderModalTags(); e.preventDefault(); }});
+    function renderModalObjs() { const objDiv = document.getElementById("locObjs"); objDiv.innerHTML = ""; modalObjs.forEach((obj, i) => { const span = document.createElement("span"); span.className = "obj"; span.innerHTML = obj + ' <button onclick="removeModalObj(' + i + ')">×</button>'; objDiv.appendChild(span);}); }
+    function removeModalObj(i) { modalObjs.splice(i, 1); renderModalObjs(); }
+    document.getElementById("locObjInput").addEventListener("keydown", function (e) { if (e.key === "Enter" && this.value.trim()) { if (!modalObjs.includes(this.value.trim())) { modalObjs.push(this.value.trim()); } this.value = ""; renderModalObjs(); e.preventDefault(); }});
+    // --- Image ---
+    document.getElementById("locImgFile").addEventListener("change", function(ev){
+      const file = this.files[0]; if (!file) return;
+      const reader = new FileReader(); reader.onload = function(e){ modalImg = e.target.result; updateImgPreview(); };
+      reader.readAsDataURL(file); this.value = '';
+    });
+    function updateImgPreview() { const img = document.getElementById("locImgPreview"); if (modalImg) { img.src = modalImg; img.style.display = ""; } else { img.style.display = "none"; }}
+    function addImgFromURL() { document.getElementById("locImgURLInput").style.display = ""; document.getElementById("locImgURLInput").focus(); }
+    document.getElementById("locImgURLInput").addEventListener("keydown", function(e){ if (e.key === "Enter" && this.value.trim()) { modalImg = this.value.trim(); updateImgPreview(); this.value = ""; this.style.display = "none";}});
+    function clearImgPreview() { modalImg = null; updateImgPreview(); document.getElementById("locImgURLInput").style.display = "none"; }
+    // --- Slider label ---
+    function updateSliderLabel() {
+      const slider = document.getElementById('locWeight');
+      const val = parseInt(slider.value);
+      let txt = ["Background","Minor","Lesser","Somewhat","Regular","Notable","Important","Major","Crucial","Pivotal"];
+      document.getElementById('sliderVal').textContent = val + " ("+txt[val-1]+")";
+    }
+    // --- Timeline ---
+    function renderTimeline() {
+      const tbar = document.getElementById('timelineBar');
+      tbar.innerHTML = "";
+      modalTimeline.forEach((entry,i)=>{
+        let div = document.createElement("div");
+        div.className = "timeline-entry";
+        div.innerHTML = `<input type="text" value="${entry.when||''}" placeholder="Act/Scene" style="margin-right:8px;" onchange="modalTimeline[${i}].when=this.value"> <input type="text" value="${entry.what||''}" placeholder="Change/State" style="min-width:120px;" onchange="modalTimeline[${i}].what=this.value"> <button onclick="removeTimelineEntry(${i})">×</button>`;
+        tbar.appendChild(div);
+      });
+    }
+    function addTimelineEntry() { modalTimeline.push({when:"",what:""}); renderTimeline(); }
+    function removeTimelineEntry(i) { modalTimeline.splice(i,1); renderTimeline(); }
+    // -- INIT --
+    loadProject();
+  </script>
+</body>
+</html>
