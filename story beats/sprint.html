@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprint Tool — Countdown Edition (Project Linked)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #eaf3ff;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .container {
+      background: rgba(24, 39, 70, 0.95);
+      border-radius: 18px;
+      padding: 36px;
+      max-width: 900px;
+      width: 100%;
+      box-shadow: 0 4px 28px #06103a66;
+      border: 1.5px solid #3b82f644;
+      margin-bottom: 28px;
+    }
+    h1, h2, h3, h4 {
+      font-size: 1.7em;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #e0f4ff;
+      font-weight: 600;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px;
+      font-size: 1.05em;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #eaf3ff;
+      margin-top: 5px;
+    }
+    button {
+      margin-top: 18px;
+      font-size: 1.1em;
+      font-weight: 600;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .wide-button { width: 100%; }
+    #editorSection { display: none; flex-direction: column; width: 100%; }
+    #editorBox {
+      width: 100%; height: 300px; background: #172a56; color: #eaf3ff;
+      padding: 14px; font-size: 1.05em; border-radius: 8px; resize: vertical;
+      border: 1.5px solid #3b82f655; margin-top: 8px;
+    }
+    #editorBox:disabled {
+      background: #2e425c;
+      color: #88a3c7;
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .meta-bar {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 1em;
+      color: #aee5ff;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .meta-bar label { margin-top: 0; margin-bottom: 0; }
+    .mic-btn {
+      font-size: 1.1em;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background: linear-gradient(92deg, #28d2e4, #2ba9ea);
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mic-btn.active { background: #b22234; color: #fffbb0; }
+    .timer {
+      background: #223d7b;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 1.05em;
+      font-weight: 600;
+      display: inline-block;
+      min-width: 120px;
+      text-align: center;
+    }
+    .waffle-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin-top: 24px;
+      font-size: 0.92em;
+    }
+    .waffle-cell {
+      background: #1a2d57;
+      border: 1px solid #2959de77;
+      border-radius: 6px;
+      padding: 10px 6px;
+      text-align: center;
+      color: #aee5ff;
+      transition: background 0.2s;
+      cursor: pointer;
+    }
+    .waffle-cell.complete {
+      background: #4befff55;
+      border-color: #4befff;
+      color: #fffbb0;
+      font-weight: 600;
+    }
+    .export-bar {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    .export-bar button {
+      background: linear-gradient(92deg, #22c55e, #16a34a);
+      font-size: 0.95em;
+      padding: 8px 16px;
+      border-radius: 8px;
+      color: #eafff2;
+      font-weight: 600;
+    }
+    .export-bar button:hover {
+      background: linear-gradient(92deg, #16a34a, #4ade80);
+    }
+    .achievements {
+      margin-top: 24px;
+      padding: 20px;
+      border-radius: 16px;
+      background: #1e356a;
+      border: 1.5px solid #4befff66;
+      color: #fffbb0;
+      font-size: 1em;
+      box-shadow: 0 0 12px #2b7aff33;
+    }
+    .achievements h4 {
+      margin-bottom: 12px;
+      font-size: 1.2em;
+      color: #eafff2;
+    }
+    .achievement {
+      background: #14233c;
+      border: 1px solid #3b82f655;
+      padding: 10px 16px;
+      margin: 6px 0;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #e0f4ff;
+    }
+    .achievement.unlocked {
+      background: #22c55e33;
+      color: #fffbb0;
+      border-color: #22c55e;
+      font-weight: 600;
+    }
+    .achievement.unlocked::after { content: '✨'; float: right; }
+    .confetti {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      top: 0; left: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    .modal-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #1a2d57;
+      padding: 24px;
+      border-radius: 12px;
+      color: #eaf3ff;
+      max-width: 600px;
+      width: 90%;
+      box-shadow: 0 6px 18px #00000077;
+    }
+    .modal h3 { margin-top: 0; font-size: 1.4em; }
+    .modal pre {
+      background: #14233c;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      max-height: 300px;
+    }
+    .modal label { display: block; margin: 12px 0 4px; font-weight: 600; }
+    .modal select, .modal textarea {
+      width: 100%; padding: 8px; font-size: 1em; background: #14233c;
+      border-radius: 6px; border: 1px solid #3b82f655; color: #eaf3ff;
+    }
+    .modal textarea { resize: vertical; height: 80px; }
+    .save-note-btn {
+      margin-top: 14px;
+      background: linear-gradient(92deg,#4befff,#2671f2);
+      border: none;
+      padding: 8px 16px;
+      font-weight: 600;
+      color: #122;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    @media (max-width:700px) {
+      .container { padding: 14px 4vw; }
+      .waffle-grid { font-size: 0.87em; }
+    }
+  </style>
+  <script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container" id="setupSection">
+    <h1>🎯 Set Your Sprint Goal</h1>
+    <form id="goalForm" onsubmit="saveSprintGoal(event)">
+      <label for="projectName">Project Name</label>
+      <input type="text" id="projectName" maxlength="80" placeholder="e.g. My Novel, SciFi Game" required>
+      <label for="goalTitle">Goal Title</label>
+      <input type="text" id="goalTitle" maxlength="80" required>
+      <label for="goalDesc">Goal Description</label>
+      <textarea id="goalDesc" rows="3" maxlength="240"></textarea>
+      <label for="goalDays">Duration (max 28 days)</label>
+      <input type="number" id="goalDays" min="1" max="28" value="7">
+      <label for="wordTarget">Word Count Target (optional)</label>
+      <input type="number" id="wordTarget" placeholder="e.g. 10000">
+      <button type="submit" class="wide-button">✅ Start Sprint</button>
+    </form>
+  </div>
+
+  <div class="container" id="editorSection">
+    <button onclick="returnToGoalSetup(true)" style="margin-bottom:10px;">⬅️ Back to Goal Setting</button>
+    <h2>✍️ Daily Sprint Editor</h2>
+    <div class="meta-bar">
+      <span id="wordCount">Words: 0</span>
+      <label style="margin:0 6px 0 12px;display:inline-flex;gap:2px;">
+        <select id="timerHours">
+          <option value="0">0h</option>
+          <option value="1">1h</option>
+          <option value="2">2h</option>
+          <option value="3">3h</option>
+          <option value="4">4h</option>
+          <option value="5">5h</option>
+          <option value="6">6h</option>
+          <option value="7">7h</option>
+          <option value="8">8h</option>
+          <option value="9">9h</option>
+          <option value="10">10h</option>
+          <option value="11">11h</option>
+          <option value="12">12h</option>
+          <option value="13">13h</option>
+          <option value="14">14h</option>
+          <option value="15">15h</option>
+          <option value="16">16h</option>
+        </select>
+        <select id="timerMinutes">
+          <option value="0">00m</option>
+          <option value="1">01m</option>
+          <option value="2">02m</option>
+          <option value="3">03m</option>
+          <option value="4">04m</option>
+          <option value="5">05m</option>
+          <option value="10">10m</option>
+          <option value="15">15m</option>
+          <option value="20">20m</option>
+          <option value="25">25m</option>
+          <option value="30">30m</option>
+          <option value="45">45m</option>
+          <option value="50">50m</option>
+          <option value="55">55m</option>
+          <option value="59">59m</option>
+        </select>
+      </label>
+      <span class="timer" id="timerDisplay">⏱ 00:00:00</span>
+      <button id="timerBtn">▶️ Start Countdown</button>
+      <button onclick="saveEntry()">💾 Save Entry</button>
+      <button onclick="copySprintToClipboard()">📋 Copy Sprint</button>
+      <button id="micBtn" class="mic-btn" onclick="toggleDictation()">🎙️ Start Dictation</button>
+    </div>
+    <textarea id="editorBox" placeholder="Start writing..."></textarea>
+    <h3>📆 Sprint Progress</h3>
+    <div id="waffleGrid" class="waffle-grid"></div>
+
+    <div class="achievements" id="achievementBox">
+      <h4>🏆 Achievements</h4>
+      <div class="achievement" id="achieve1">🟡 3-Day Streak</div>
+      <div class="achievement" id="achieve2">🟡 7-Day Warrior</div>
+      <div class="achievement" id="achieve3">🟡 1000 Words Club</div>
+      <div class="achievement" id="achieve4">🟡 First Save</div>
+      <div class="achievement" id="achieve5">🟡 250 Words in One Entry</div>
+      <div class="achievement" id="achieve6">🟡 10+ Minute Sprint</div>
+      <div class="achievement" id="achieve7">🟡 1 Hour of Total Sprinting</div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="logModalBg">
+    <div class="modal">
+      <h3 id="modalTitle"></h3>
+      <pre id="modalContent"></pre>
+      <label for="logRating">Rating (1-5)</label>
+      <select id="logRating">
+        <option value="">—</option>
+        <option value="⭐">⭐</option>
+        <option value="⭐⭐">⭐⭐</option>
+        <option value="⭐⭐⭐">⭐⭐⭐</option>
+        <option value="⭐⭐⭐⭐">⭐⭐⭐⭐</option>
+        <option value="⭐⭐⭐⭐⭐">⭐⭐⭐⭐⭐</option>
+      </select>
+      <label for="logNotes">Notes / Reflection</label>
+      <textarea id="logNotes" placeholder="How did this session go?"></textarea>
+      <button class="save-note-btn" onclick="saveLogNotes()">Save</button>
+      <button class="modal-close" onclick="closeLogModal()">Close</button>
+    </div>
+  </div>
+  <canvas id="confettiCanvas" class="confetti"></canvas>
+<script>
+  // --- TIMER COUNTDOWN LOGIC ---
+  let countdownInterval, countdownActive = false, countdownEnd = 0, editingLocked = false;
+  let recognizing = false, recognition;
+  let currentLogDate = null;
+
+  function formatTime(ms) {
+    let totalSeconds = Math.floor(ms / 1000);
+    let hrs = Math.floor(totalSeconds / 3600);
+    let mins = Math.floor((totalSeconds % 3600) / 60);
+    let secs = Math.floor((ms % 60000) / 1000);
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  function startCountdown() {
+    if (countdownActive) return;
+    const hours = parseInt(document.getElementById('timerHours').value);
+    const minutes = parseInt(document.getElementById('timerMinutes').value);
+    let totalMs = (hours * 60 * 60 + minutes * 60) * 1000;
+    if (totalMs < 60000) {
+      alert("Set timer for at least 1 minute.");
+      return;
+    }
+    countdownEnd = Date.now() + totalMs;
+    document.getElementById('timerBtn').textContent = '⏹ Stop Countdown';
+    countdownActive = true;
+    editingLocked = false;
+    document.getElementById('editorBox').disabled = false;
+    updateCountdownDisplay();
+    countdownInterval = setInterval(() => {
+      updateCountdownDisplay();
+    }, 1000);
+  }
+
+  function updateCountdownDisplay() {
+    let now = Date.now();
+    let remaining = countdownEnd - now;
+    if (remaining < 0) remaining = 0;
+    let h = Math.floor(remaining / 3600000);
+    let m = Math.floor((remaining % 3600000) / 60000);
+    let s = Math.floor((remaining % 60000) / 1000);
+    document.getElementById('timerDisplay').textContent =
+      `⏱ ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+
+    if (remaining <= 0 && countdownActive) {
+      clearInterval(countdownInterval);
+      countdownActive = false;
+      document.getElementById('timerBtn').textContent = '▶️ Start Countdown';
+      // Lock editor, show message
+      editingLocked = true;
+      document.getElementById('editorBox').disabled = true;
+      setTimeout(() =>
+        alert("⏰ Sprint complete! Time's up! Save your entry or set a new sprint."), 300);
+      fireConfetti();
+      playDing();
+    }
+  }
+
+  document.getElementById('timerBtn').onclick = function() {
+    if (countdownActive) {
+      clearInterval(countdownInterval);
+      countdownActive = false;
+      document.getElementById('timerBtn').textContent = '▶️ Start Countdown';
+      document.getElementById('editorBox').disabled = false;
+    } else {
+      startCountdown();
+    }
+  };
+
+  document.getElementById('editorBox').addEventListener('keydown', function(e) {
+    if (editingLocked && !e.ctrlKey) e.preventDefault();
+  });
+
+  // --- PROJECT-LINKED SPRINT ARCHIVE LOGIC ---
+  function archiveSprint(projectId, sprint) {
+    let allProjects = JSON.parse(localStorage.getItem('sprintProjects') || '{}');
+    if (!allProjects[projectId]) allProjects[projectId] = [];
+    allProjects[projectId] = allProjects[projectId].filter(s => s.id !== sprint.id);
+    allProjects[projectId].push(sprint);
+    localStorage.setItem('sprintProjects', JSON.stringify(allProjects));
+  }
+
+  function saveSprintGoal(e) {
+    e.preventDefault();
+    let projectInfo = JSON.parse(localStorage.getItem('currentProject') || 'null');
+    let projectName = document.getElementById('projectName').value.trim();
+    let projectId = projectInfo?.id || ('proj_' + projectName.replace(/\s+/g, '_').toLowerCase());
+    if (!projectName) return alert("Please enter a project name.");
+
+    const prevSprint = JSON.parse(localStorage.getItem('currentSprint') || 'null');
+    if (prevSprint && prevSprint.id && prevSprint.projectId) {
+      archiveSprint(prevSprint.projectId, prevSprint);
+    }
+
+    const title = document.getElementById('goalTitle').value.trim();
+    const desc = document.getElementById('goalDesc').value.trim();
+    const days = parseInt(document.getElementById('goalDays').value);
+    const wordTarget = parseInt(document.getElementById('wordTarget').value) || null;
+    const createdAt = new Date().toISOString();
+
+    if (!title || days < 1 || days > 28) return alert("Please fill the title and set duration between 1 and 28.");
+
+    const sprint = {
+      id: "sprint_" + Date.now(),
+      projectId,
+      projectName,
+      title, desc, days, wordTarget, createdAt, logs: []
+    };
+
+    localStorage.setItem('currentSprint', JSON.stringify(sprint));
+    localStorage.setItem('currentProject', JSON.stringify({id: projectId, name: projectName}));
+    document.getElementById('setupSection').style.display = 'none';
+    document.getElementById('editorSection').style.display = 'flex';
+    renderGrid();
+    checkAchievements();
+  }
+
+  function returnToGoalSetup(archive = false) {
+    if (!confirm("End and archive this sprint and return to the Goal Setting screen? Unsaved work in the editor will be lost.")) return;
+    if (archive) {
+      let sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+      if (sprint && sprint.id && sprint.projectId) {
+        archiveSprint(sprint.projectId, sprint);
+      }
+      localStorage.removeItem('currentSprint');
+    }
+    document.getElementById('editorSection').style.display = 'none';
+    document.getElementById('setupSection').style.display = 'block';
+    document.getElementById('editorBox').value = '';
+  }
+
+  function updateWordCount() {
+    const text = document.getElementById('editorBox').value;
+    const count = text.trim().split(/\s+/).filter(Boolean).length;
+    document.getElementById('wordCount').innerText = `Words: ${count}`;
+  }
+
+  function saveEntry() {
+    const content = document.getElementById('editorBox').value.trim();
+    if (!content) return alert("Cannot save an empty entry.");
+
+    let sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    if (!sprint || !sprint.logs) return alert("No sprint found.");
+
+    let hours = parseInt(document.getElementById('timerHours').value);
+    let minutes = parseInt(document.getElementById('timerMinutes').value);
+    let totalMs = (hours * 60 * 60 + minutes * 60) * 1000;
+    let timeSpent = formatTime(totalMs);
+
+    const now = new Date();
+    sprint.logs.push({
+      date: now.toISOString(),
+      content,
+      wordCount: content.split(/\s+/).filter(Boolean).length,
+      timeSpent: timeSpent,
+      rating: "",
+      notes: ""
+    });
+
+    localStorage.setItem('currentSprint', JSON.stringify(sprint));
+    alert("Entry saved!");
+    document.getElementById('editorBox').value = '';
+    updateWordCount();
+    renderGrid();
+    checkAchievements();
+    editingLocked = false;
+    document.getElementById('editorBox').disabled = false;
+  }
+  function exportLogs(type) {
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    if (!sprint || !sprint.logs || sprint.logs.length === 0) return alert("No entries to export.");
+
+    if (type === 'json') {
+      const blob = new Blob([JSON.stringify(sprint.logs, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, `sprint_logs_${sprint.id}.json`);
+    } else if (type === 'txt') {
+      let text = `Sprint: ${sprint.title}\nDescription: ${sprint.desc}\n\n`;
+      sprint.logs.forEach((log, idx) => {
+        text += `Session ${idx + 1} — ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}, Rating: ${log.rating || "-"}\nNotes: ${log.notes || ""}\n${log.content}\n\n`;
+      });
+      const blob = new Blob([text], { type: 'text/plain' });
+      downloadBlob(blob, `sprint_logs_${sprint.id}.txt`);
+    }
+  }
+
+  function downloadBlob(blob, filename) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('waffleGrid');
+    grid.innerHTML = '';
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    if (!sprint) return;
+    const logsByDate = {};
+    sprint.logs?.forEach(l => {
+      const day = l.date.substring(0, 10);
+      if (!logsByDate[day]) logsByDate[day] = [];
+      logsByDate[day].push(l);
+    });
+    const startDate = new Date(sprint.createdAt);
+
+    for (let i = 0; i < sprint.days; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const dateStr = d.toISOString().substring(0, 10);
+      const cell = document.createElement('div');
+      cell.className = 'waffle-cell';
+      if (logsByDate[dateStr]) cell.classList.add('complete');
+      const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+      cell.innerHTML = `<div>${weekday}</div><div>${dateStr}</div>`;
+      cell.onclick = () => showLogModal(dateStr);
+      grid.appendChild(cell);
+    }
+  }
+
+  function showLogModal(date) {
+    currentLogDate = date;
+    const modalBg = document.getElementById('logModalBg');
+    const title = document.getElementById('modalTitle');
+    const content = document.getElementById('modalContent');
+    const rating = document.getElementById('logRating');
+    const notes = document.getElementById('logNotes');
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    const logs = sprint.logs?.filter(l => l.date.startsWith(date));
+    if (logs && logs.length) {
+      let sessionsHTML = '';
+      logs.forEach((log, idx) => {
+        sessionsHTML += `Session ${idx+1} (${log.date.substring(11,19)})\nWords: ${log.wordCount}\nTime: ${log.timeSpent}\nRating: ${log.rating || "-"}\nNotes: ${log.notes || ""}\n${log.content}\n\n`;
+      });
+      content.innerText = sessionsHTML;
+      const latest = logs[logs.length-1];
+      rating.value = latest.rating || "";
+      notes.value = latest.notes || "";
+    } else {
+      content.innerText = 'No entry for this day.';
+      rating.value = "";
+      notes.value = "";
+    }
+    title.innerText = `📝 Logs for ${date}`;
+    modalBg.style.display = 'flex';
+  }
+
+  function saveLogNotes() {
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    const logs = sprint.logs || [];
+    const rating = document.getElementById('logRating').value;
+    const notes = document.getElementById('logNotes').value;
+    const filtered = logs.filter(l => l.date.startsWith(currentLogDate));
+    if (filtered && filtered.length) {
+      let latest = filtered[filtered.length-1];
+      latest.rating = rating;
+      latest.notes = notes;
+      localStorage.setItem('currentSprint', JSON.stringify(sprint));
+      alert("Saved!");
+    }
+  }
+
+  function closeLogModal() {
+    document.getElementById('logModalBg').style.display = 'none';
+  }
+
+  function checkAchievements() {
+    const logs = (JSON.parse(localStorage.getItem('currentSprint')) || {}).logs || [];
+    const unlocked = new Set();
+    if (logs.length > 0) unlocked.add('achieve4');
+    const dates = logs.map(l => l.date.substring(0, 10));
+    const streak = getStreakCount(dates);
+    const totalWords = logs.reduce((sum, l) => sum + (l.wordCount || 0), 0);
+    const totalTime = logs.reduce((sum, l) => sum + parseTime(l.timeSpent || '00:00:00'), 0);
+    if (streak >= 3) unlocked.add('achieve1');
+    if (streak >= 7) unlocked.add('achieve2');
+    if (totalWords >= 1000) unlocked.add('achieve3');
+    if (logs.some(l => l.wordCount >= 250)) unlocked.add('achieve5');
+    if (logs.some(l => parseTime(l.timeSpent) >= 600)) unlocked.add('achieve6');
+    if (totalTime >= 3600) unlocked.add('achieve7');
+    ['achieve1', 'achieve2', 'achieve3', 'achieve4', 'achieve5', 'achieve6', 'achieve7'].forEach(id => {
+      const el = document.getElementById(id);
+      if (unlocked.has(id) && !el.classList.contains('unlocked')) {
+        el.classList.add('unlocked');
+        fireConfetti();
+        playDing();
+      }
+    });
+  }
+
+  function getStreakCount(dates) {
+    const sorted = dates.map(d => new Date(d)).sort((a,b) => a - b);
+    let streak = 1, max = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      const diff = (sorted[i] - sorted[i-1]) / (1000 * 60 * 60 * 24);
+      if (diff === 1) { streak++; max = Math.max(max, streak); }
+      else streak = 1;
+    }
+    return max;
+  }
+
+  function parseTime(hms) {
+    if (!hms) return 0;
+    const [h, m, s] = hms.split(':').map(Number);
+    return (h * 3600 + m * 60 + s);
+  }
+
+  function playDing() {
+    const audio = new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg');
+    audio.play();
+  }
+
+  function fireConfetti() {
+    const duration = 1500;
+    const end = Date.now() + duration;
+    const canvas = document.getElementById('confettiCanvas');
+    if (!window.confetti || !window.confetti.create) return;
+    const myConfetti = window.confetti.create(canvas, { resize: true });
+    const frame = () => {
+      myConfetti({ particleCount: 2, spread: 90, origin: { y: 0.6 } });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  }
+
+  function toggleDictation() {
+    const micBtn = document.getElementById('micBtn');
+    if (!('webkitSpeechRecognition' in window)) return alert("Speech recognition unsupported.");
+    if (!recognition) {
+      recognition = new webkitSpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      recognition.onresult = e => {
+        for (let i = e.resultIndex; i < e.results.length; ++i)
+          if (e.results[i].isFinal) {
+            document.getElementById('editorBox').value += ' ' + e.results[i][0].transcript;
+            updateWordCount();
+          }
+      };
+    }
+    if (recognizing) {
+      recognition.stop(); micBtn.classList.remove('active'); micBtn.innerText = '🎙️ Start Dictation';
+    } else {
+      recognition.start(); micBtn.classList.add('active'); micBtn.innerText = '🛑 Stop Dictation';
+    }
+    recognizing = !recognizing;
+  }
+
+  // NEW — Send Sprint Data to Chapter Outliner
+  function sendSprintToChapter() {
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    if (!sprint || !sprint.logs || sprint.logs.length === 0) {
+      alert("No sprint data to send.");
+      return;
+    }
+    const chaptersKey = "chapters_" + (sprint.projectId || "defaultProject");
+    let chapters = JSON.parse(localStorage.getItem(chaptersKey) || "[]");
+
+    const sprintText = sprint.logs.map((log, idx) => 
+      `Session ${idx + 1} — ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}\nNotes: ${log.notes || ""}\n${log.content}`
+    ).join("\n\n---\n\n");
+
+    chapters.push({
+      id: "chap_" + Date.now(),
+      title: `Sprint: ${sprint.title}`,
+      summary: sprint.desc || "",
+      tags: ["sprint-data"],
+      status: "Draft",
+      bodyHtml: `<pre>${sprintText}</pre>`
+    });
+
+    localStorage.setItem(chaptersKey, JSON.stringify(chapters));
+    alert("Sprint data sent to Outliner!");
+  }
+
+  document.getElementById('editorBox').addEventListener('input', updateWordCount);
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const proj = JSON.parse(localStorage.getItem('currentProject') || 'null');
+    if (proj && proj.name) document.getElementById('projectName').value = proj.name;
+    const sprint = localStorage.getItem('currentSprint');
+    if (sprint) {
+      document.getElementById('setupSection').style.display = 'none';
+      document.getElementById('editorSection').style.display = 'flex';
+      renderGrid();
+      checkAchievements();
+    }
+  });
+  function copySprintToClipboard() {
+  const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+  if (!sprint || !sprint.logs || sprint.logs.length === 0) {
+    alert("No sprint data to copy.");
+    return;
+  }
+  let text = `Sprint: ${sprint.title}\nDescription: ${sprint.desc}\n\n`;
+  sprint.logs.forEach((log, idx) => {
+    text += `Session ${idx + 1} — ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}\nNotes: ${log.notes || ""}\n${log.content}\n\n`;
+  });
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Sprint copied to clipboard!");
+  }).catch(err => {
+    console.error(err);
+    alert("Failed to copy sprint.");
+  });
+}
+
+</script>
+</body>
+</html>

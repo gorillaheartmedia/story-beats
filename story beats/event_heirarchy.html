@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Beat → Event → Scene Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg1:#143575; --bg2:#1958ca; --card: rgba(255,255,255,.12); --glass: rgba(24,39,70,.95); }
+    body { margin:0; font-family: Inter, system-ui, Arial, sans-serif; color:#eaf3ff; background: linear-gradient(135deg,var(--bg1) 60%, var(--bg2) 100%); }
+    .container { max-width: 1080px; margin: 34px auto; background: var(--glass); border: 1.5px solid #3b82f644; border-radius: 18px; box-shadow: 0 6px 28px #06103a66; padding: 26px 28px 34px; }
+    h1 { margin: 0 0 8px 0; font-size: 1.9rem; color:#fff; letter-spacing: .02em; }
+    .row { display:flex; gap: 16px; flex-wrap: wrap; }
+    .col { flex:1 1 320px; min-width: 320px; }
+    .card { background: var(--card); border: 1.5px solid #2953a950; border-radius: 12px; padding: 14px; box-shadow: 0 2px 12px #0a194e29; }
+    .muted { color:#a5d6fd; opacity:.9; font-size: .96em; }
+    label { display:block; font-weight:600; margin: 10px 0 6px; }
+    input, textarea, select { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1.2px solid #284687; background: #19306a44; color: #eaf3ff; font-size: 1rem; }
+    textarea { resize: vertical; min-height: 70px; }
+    .btn { background: linear-gradient(92deg, #2671f2, #2959de 90%); color:#fff; border:none; border-radius: 8px; font-weight:700; padding: 9px 14px; cursor:pointer; box-shadow: 0 2px 9px #10399a24; }
+    .btn.alt { background: linear-gradient(92deg, #1d346e 20%, #3282f0 80%); color:#aee5ff; }
+    .btn.danger { background: linear-gradient(92deg,#a42034,#eb486b 90%); }
+    .toolbar { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+    .pill { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; border:1px solid #2953a950; background:#193772; }
+    .list { display:flex; flex-direction:column; gap: 10px; margin: 12px 0 0; }
+    .item { background:#10254ccc; border:1px solid #26459c66; border-radius: 10px; padding: 10px 12px; display:flex; align-items:center; gap:12px; }
+    .item.dragging { outline:2px dashed #4befff; }
+    .handle { cursor: grab; user-select:none; font-size: 1.2rem; color:#89bbf9; }
+    .grow { flex:1 1 auto; }
+    .small { font-size: .92em; color:#b9e6ff; }
+    .right { margin-left:auto; }
+    .ghost { opacity: .35; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .92em; }
+    .sep { height: 1px; background:#2953a930; margin: 12px 0; }
+    .link { color:#8ae8ff; cursor:pointer; text-decoration: underline; }
+    .tag { background:#2959de44; border:1px solid #3b82f655; color:#bee1fd; border-radius:6px; padding: 2px 8px; font-size:.9em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="toolbar" style="justify-content:space-between;">
+      <div>
+        <h1>Beat → Event → Scene Manager</h1>
+        <div class="muted">Top-level is <b>Beat</b>, which contains <b>Events</b>, which in turn contain <b>Scenes</b>. Everything is cross-linked by IDs and orderable.</div>
+      </div>
+      <div class="toolbar">
+        <button class="btn" onclick="createBeat()">+ Beat</button>
+        <button class="btn alt" onclick="exportJSON()">Export</button>
+        <input type="file" id="importer" accept="application/json" style="display:none"/>
+        <button class="btn alt" onclick="document.getElementById('importer').click()">Import</button>
+        <button class="btn danger" onclick="if(confirm('Clear ALL data?')){ localStorage.removeItem(KEY); render(); }">Clear</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <!-- BEATS COLUMN -->
+      <div class="col">
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between;">
+            <h2 style="margin:0; font-size:1.2rem;">Beats</h2>
+            <span class="muted mono">Drag • drop to reorder</span>
+          </div>
+          <div id="beatList" class="list"></div>
+        </div>
+      </div>
+
+      <!-- EDITOR COLUMN -->
+      <div class="col">
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between;">
+            <h2 style="margin:0; font-size:1.2rem;">Inspector</h2>
+            <span id="focusBadge" class="pill" style="display:none"></span>
+          </div>
+          <div id="inspector" class="muted">Select a Beat, Event, or Scene to edit.</div>
+        </div>
+      </div>
+
+      <!-- EVENTS/SCENES COLUMN -->
+      <div class="col">
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between;">
+            <h2 style="margin:0; font-size:1.2rem;">Children</h2>
+            <span class="muted">Contextual list of Events or Scenes</span>
+          </div>
+          <div id="childToolbar" class="toolbar" style="margin-top:8px; display:none"></div>
+          <div id="childList" class="list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+    <div class="muted small">Storage key: <code class="mono">story.hierarchy.v1</code> • All items have stable <code class="mono">id</code> and parent references (<code class="mono">beatId</code>, <code class="mono">eventId</code>). Deleting parents will optionally cascade and clean inbound links.</div>
+  </div>
+
+<script>
+/*****************
+ * Data Model
+ * Beat { id, title, summary, tags[], order }
+ * Event { id, beatId, title, when, summary, weight(1..10), tags[], order }
+ * Scene { id, eventId, title, summary, status, tags[], order, links: { characters:[], locations:[], extSceneId? } }
+ *****************/
+const KEY = 'story.hierarchy.v1';
+const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || { beats:[], events:[], scenes:[] }; } catch(e){ return { beats:[], events:[], scenes:[] }; } }
+function save(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
+
+let state = load();
+let focus = { type:null, id:null }; // {type:'beat'|'event'|'scene', id}
+
+/*****************
+ * Render
+ *****************/
+function render() {
+  state = sortAll(load());
+  renderBeats();
+  renderInspector();
+  renderChildren();
+}
+
+function sortAll(d){
+  d.beats.sort((a,b)=> (a.order??0)-(b.order??0));
+  d.events.sort((a,b)=> (a.order??0)-(b.order??0));
+  d.scenes.sort((a,b)=> (a.order??0)-(b.order??0));
+  return d;
+}
+
+/*****************
+ * Beats Column
+ *****************/
+function renderBeats(){
+  const root = document.getElementById('beatList');
+  root.innerHTML = '';
+  state.beats.forEach(beat => {
+    const evCount = state.events.filter(e=>e.beatId===beat.id).length;
+    const scCount = state.scenes.filter(s=> state.events.find(e=>e.id===s.eventId)?.beatId === beat.id ).length;
+    const el = h('div',{class:'item', draggable:true, 'data-id': beat.id, ondragstart: onDragStart, ondragover: onDragOver, ondrop: onDropOrder('beat')},[
+      h('div',{class:'handle', title:'Drag to reorder'},'≡'),
+      h('div',{class:'grow'},[
+        h('div',{}, beat.title || 'Untitled Beat'),
+        h('div',{class:'small'}, `${evCount} event${evCount!==1?'s':''} • ${scCount} scene${scCount!==1?'s':''}`)
+      ]),
+      h('button',{class:'btn alt', onclick:()=>select('beat', beat.id)},'Open'),
+      h('button',{class:'btn danger', onclick:()=>deleteBeat(beat.id)},'Delete')
+    ]);
+    root.appendChild(el);
+  });
+}
+
+/*****************
+ * Inspector Panel
+ *****************/
+function renderInspector(){
+  const insp = document.getElementById('inspector');
+  const badge = document.getElementById('focusBadge');
+  const toolbar = document.getElementById('childToolbar');
+  toolbar.style.display = 'none';
+  badge.style.display = 'none';
+
+  if(!focus.type){ insp.innerHTML = 'Select a Beat, Event, or Scene to edit.'; return; }
+  const type = focus.type;
+  const obj = getObj(focus);
+  if(!obj){ insp.innerHTML = 'Not found.'; return; }
+
+  badge.style.display = 'inline-flex';
+  badge.textContent = type.toUpperCase();
+
+  if(type==='beat'){
+    insp.innerHTML = '';
+    insp.appendChild(formField('Title','text','title', obj.title, v=>update('beat', obj.id, {title:v})));
+    insp.appendChild(formArea('Summary','summary', obj.summary||'', v=>update('beat', obj.id, {summary:v})));
+    insp.appendChild(tagEditor(obj.tags||[], tags=>update('beat', obj.id, {tags})));
+
+    toolbar.style.display = 'flex';
+    toolbar.innerHTML = '';
+    toolbar.appendChild(h('button',{class:'btn', onclick:()=>createEvent(obj.id)}, '+ Event'));
+  }
+
+  if(type==='event'){
+    insp.innerHTML = '';
+    insp.appendChild(formField('Title','text','title', obj.title, v=>update('event', obj.id, {title:v})));
+    insp.appendChild(formField('When (Act/Scene/Chapter/Date)','text','when', obj.when||'', v=>update('event', obj.id, {when:v})));
+    insp.appendChild(formArea('Summary','summary', obj.summary||'', v=>update('event', obj.id, {summary:v})));
+    insp.appendChild(rangeField('Significance / Weight', 'weight', obj.weight??5, 1,10,1, v=>update('event', obj.id, {weight:parseInt(v)})));
+    insp.appendChild(tagEditor(obj.tags||[], tags=>update('event', obj.id, {tags})));
+
+    toolbar.style.display = 'flex';
+    toolbar.innerHTML = '';
+    toolbar.appendChild(h('span',{class:'pill'},`Beat: ${getBeat(obj.beatId)?.title||'—'}`));
+    toolbar.appendChild(h('button',{class:'btn', onclick:()=>createScene(obj.id)}, '+ Scene'));
+  }
+
+  if(type==='scene'){
+    insp.innerHTML = '';
+    insp.appendChild(formField('Title','text','title', obj.title||'', v=>update('scene', obj.id, {title:v})));
+    insp.appendChild(formArea('Summary','summary', obj.summary||'', v=>update('scene', obj.id, {summary:v})));
+    insp.appendChild(selectField('Status','status', obj.status||'Draft', ['Draft','Revised','Final','Skipped'], v=>update('scene', obj.id, {status:v})));
+    insp.appendChild(tagEditor(obj.tags||[], tags=>update('scene', obj.id, {tags})));
+
+    // Cross-links (characters, locations, external scene id from your other tool)
+    const links = obj.links || { characters:[], locations:[], extSceneId:'' };
+    insp.appendChild(chipsEditor('Characters', links.characters, vals=>update('scene', obj.id, {links:{...links, characters:vals}})));
+    insp.appendChild(chipsEditor('Locations', links.locations, vals=>update('scene', obj.id, {links:{...links, locations:vals}})));
+    insp.appendChild(formField('External Scene ID (from other system)','text','extSceneId', links.extSceneId||'', v=>update('scene', obj.id, {links:{...links, extSceneId:v}})));
+
+    toolbar.style.display = 'flex';
+    toolbar.innerHTML = '';
+    const ev = getEvent(obj.eventId);
+    toolbar.appendChild(h('span',{class:'pill'},`Event: ${ev?.title||'—'}`));
+    toolbar.appendChild(h('span',{class:'pill'},`Beat: ${getBeat(ev?.beatId)?.title||'—'}`));
+  }
+}
+
+/*****************
+ * Children Column (contextual)
+ *****************/
+function renderChildren(){
+  const root = document.getElementById('childList');
+  const bar = document.getElementById('childToolbar');
+  root.innerHTML = '';
+  if(!focus.type){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+
+  if(focus.type==='beat'){
+    const events = state.events.filter(e=>e.beatId===focus.id).sort((a,b)=>(a.order??0)-(b.order??0));
+    bar.innerHTML = '';
+    bar.appendChild(h('span',{class:'muted'}, `${events.length} event${events.length!==1?'s':''}`));
+
+    events.forEach(ev=>{
+      const scCount = state.scenes.filter(s=>s.eventId===ev.id).length;
+      root.appendChild(rowItem('event', ev.id, `${ev.title||'Untitled Event'}`, `${scCount} scene${scCount!==1?'s':''}`));
+    });
+  }
+  if(focus.type==='event'){
+    const scenes = state.scenes.filter(s=>s.eventId===focus.id).sort((a,b)=>(a.order??0)-(b.order??0));
+    bar.innerHTML = '';
+    bar.appendChild(h('span',{class:'muted'}, `${scenes.length} scene${scenes.length!==1?'s':''}`));
+
+    scenes.forEach(sc=>{
+      root.appendChild(rowItem('scene', sc.id, `${sc.title||'Untitled Scene'}`, `${(sc.status||'Draft')}`));
+    });
+  }
+  if(focus.type==='scene'){
+    // show siblings of this scene
+    const me = getScene(focus.id); if(!me) return;
+    const sibs = state.scenes.filter(s=>s.eventId===me.eventId).sort((a,b)=>(a.order??0)-(b.order??0));
+    bar.innerHTML = '';
+    bar.appendChild(h('span',{class:'muted'}, `${sibs.length} sibling scene${sibs.length!==1?'s':''}`));
+
+    sibs.forEach(sc=>{
+      root.appendChild(rowItem('scene', sc.id, `${sc.title||'Untitled Scene'}`, `${(sc.status||'Draft')}`, sc.id===me.id));
+    });
+  }
+}
+
+function rowItem(type, id, title, meta, isActive=false){
+  return h('div',{class:'item'+(isActive?' ghost':''), draggable:true, 'data-id':id, ondragstart:onDragStart, ondragover:onDragOver, ondrop:onDropOrder(type)},[
+    h('div',{class:'handle'},'≡'),
+    h('div',{class:'grow'},[
+      h('div',{}, title),
+      h('div',{class:'small'}, meta)
+    ]),
+    h('button',{class:'btn alt', onclick:()=>select(type, id)},'Open'),
+    h('button',{class:'btn danger', onclick:()=> del(type, id)},'Delete')
+  ]);
+}
+
+/*****************
+ * CRUD
+ *****************/
+function createBeat(){
+  const id = uid();
+  state.beats.push({ id, title:'New Beat', summary:'', tags:[], order: (state.beats.at(-1)?.order ?? state.beats.length) + 1 });
+  save(state); select('beat', id);
+}
+function createEvent(beatId){
+  const id = uid();
+  state.events.push({ id, beatId, title:'New Event', when:'', summary:'', weight:5, tags:[], order: nextOrder(state.events.filter(e=>e.beatId===beatId)) });
+  save(state); select('event', id);
+}
+function createScene(eventId){
+  const id = uid();
+  state.scenes.push({ id, eventId, title:'New Scene', summary:'', status:'Draft', tags:[], links:{characters:[], locations:[], extSceneId:''}, order: nextOrder(state.scenes.filter(s=>s.eventId===eventId)) });
+  save(state); select('scene', id);
+}
+function update(type, id, patch){
+  const arr = arrOf(type);
+  const ix = arr.findIndex(x=>x.id===id);
+  if(ix>-1){ arr[ix] = { ...arr[ix], ...patch }; save(state); renderInspector(); renderBeats(); renderChildren(); }
+}
+function del(type, id){
+  if(type==='beat') return deleteBeat(id);
+  if(type==='event') return deleteEvent(id);
+  if(type==='scene') return deleteScene(id);
+}
+function deleteBeat(id){
+  const evs = state.events.filter(e=>e.beatId===id);
+  const scs = state.scenes.filter(s=> evs.some(e=>e.id===s.eventId));
+  const msg = `Delete Beat and its ${evs.length} event(s) and ${scs.length} scene(s)?`;
+  if(!confirm(msg)) return;
+  state.scenes = state.scenes.filter(s=> !scs.includes(s));
+  state.events = state.events.filter(e=> e.beatId!==id);
+  state.beats  = state.beats.filter(b=> b.id!==id);
+  if(focus.id===id) focus={type:null,id:null};
+  save(state); render();
+}
+function deleteEvent(id){
+  const scs = state.scenes.filter(s=> s.eventId===id);
+  const msg = `Delete Event and its ${scs.length} scene(s)?`;
+  if(!confirm(msg)) return;
+  state.scenes = state.scenes.filter(s=> s.eventId!==id);
+  state.events = state.events.filter(e=> e.id!==id);
+  if(focus.id===id) focus={type:null,id:null};
+  save(state); render();
+}
+function deleteScene(id){
+  state.scenes = state.scenes.filter(s=> s.id!==id);
+  if(focus.id===id) focus={type:null,id:null};
+  save(state); render();
+}
+
+/*****************
+ * Reordering (HTML5 drag & drop)
+ *****************/
+let drag = { type:null, id:null };
+function onDragStart(ev){
+  const id = ev.currentTarget.getAttribute('data-id');
+  drag.id = id;
+  // infer type from current focus context or beats list
+  const inBeats = ev.currentTarget.parentElement.id==='beatList';
+  drag.type = inBeats ? 'beat' : (focus.type==='event' ? 'scene' : (focus.type==='beat' ? 'event' : focus.type));
+  ev.dataTransfer.setData('text/plain', id);
+}
+function onDragOver(ev){ ev.preventDefault(); }
+function onDropOrder(type){
+  return (ev)=>{
+    ev.preventDefault();
+    const targetId = ev.currentTarget.getAttribute('data-id');
+    if(!targetId || drag.type!==type) return;
+    reorder(type, drag.id, targetId);
+  };
+}
+function reorder(type, srcId, targetId){
+  const arr = arrOf(type);
+  const src = arr.find(x=>x.id===srcId);
+  const tgt = arr.find(x=>x.id===targetId);
+  if(!src || !tgt) return;
+
+  // Restrict scope: beats are global; events only within same beat; scenes only within same event
+  if(type==='event' && src.beatId!==tgt.beatId) return;
+  if(type==='scene' && src.eventId!==tgt.eventId) return;
+
+  const list = arr.filter(x=>{
+    if(type==='beat') return true;
+    if(type==='event') return x.beatId===src.beatId;
+    if(type==='scene') return x.eventId===src.eventId;
+  }).sort((a,b)=>(a.order??0)-(b.order??0));
+
+  const srcIx = list.findIndex(x=>x.id===srcId);
+  const tgtIx = list.findIndex(x=>x.id===targetId);
+  if(srcIx===-1 || tgtIx===-1) return;
+
+  list.splice(tgtIx, 0, list.splice(srcIx,1)[0]);
+  list.forEach((x,i)=> x.order = i+1);
+  save(state); render();
+}
+function nextOrder(list){ return (list?.length||0) + 1; }
+
+/*****************
+ * Helpers
+ *****************/
+function getObj({type,id}){ return (type==='beat')?getBeat(id):(type==='event')?getEvent(id):getScene(id); }
+const getBeat = id=> state.beats.find(b=>b.id===id);
+const getEvent = id=> state.events.find(e=>e.id===id);
+const getScene = id=> state.scenes.find(s=>s.id===id);
+const arrOf   = type=> type==='beat'?state.beats : type==='event'?state.events : state.scenes;
+
+function select(type, id){ focus = {type,id}; renderInspector(); renderChildren(); }
+
+/*****************
+ * UI bits
+ *****************/
+function h(tag, props={}, children){
+  const el = document.createElement(tag);
+  for(const k in props){
+    if(k==='class') el.className = props[k];
+    else if(k==='style') el.setAttribute('style', props[k]);
+    else if(k.startsWith('on')) el[k] = props[k];
+    else el.setAttribute(k, props[k]);
+  }
+  (Array.isArray(children)?children:[children]).filter(Boolean).forEach(c=>{
+    if(typeof c==='string') el.appendChild(document.createTextNode(c)); else el.appendChild(c);
+  });
+  return el;
+}
+function formField(labelText, type, name, value, oninput){
+  const wrap = h('div');
+  wrap.appendChild(h('label',{}, labelText));
+  const input = h('input',{type, value:value||''});
+  input.oninput = e=> oninput(e.target.value);
+  wrap.appendChild(input);
+  return wrap;
+}
+function formArea(labelText, name, value, oninput){
+  const wrap = h('div'); wrap.appendChild(h('label',{}, labelText));
+  const ta = h('textarea',{}, value||''); ta.oninput = e=> oninput(e.target.value); wrap.appendChild(ta); return wrap;
+}
+function selectField(labelText, name, value, options, onchange){
+  const wrap = h('div'); wrap.appendChild(h('label',{}, labelText));
+  const sel = h('select'); options.forEach(opt=> sel.appendChild(h('option',{value:opt, selected: opt===value}, opt)));
+  sel.onchange = e=> onchange(e.target.value); wrap.appendChild(sel); return wrap;
+}
+function rangeField(labelText, name, value, min,max,step, onchange){
+  const wrap = h('div'); wrap.appendChild(h('label',{}, labelText));
+  const row = h('div',{class:'toolbar'});
+  const rng = h('input',{type:'range', min, max, step, value});
+  const out = h('span',{class:'pill'}, String(value));
+  rng.oninput = e=> { out.textContent = e.target.value; onchange(e.target.value); };
+  row.appendChild(rng); row.appendChild(out); wrap.appendChild(row); return wrap;
+}
+function tagEditor(tags, onChange){
+  const wrap = h('div'); wrap.appendChild(h('label',{}, 'Tags'));
+  const row = h('div',{class:'toolbar'});
+  const input = h('input',{placeholder:'Add tag & Enter'});
+  input.onkeydown = e=>{ if(e.key==='Enter' && input.value.trim()){ const next=[...new Set([...tags, input.value.trim()])]; onChange(next); renderInspector(); input.value=''; } };
+  row.appendChild(input);
+  const pills = h('div',{class:'toolbar'});
+  (tags||[]).forEach(t=> pills.appendChild(h('span',{class:'pill'}, [t, h('button',{class:'btn danger', onclick:()=>{ onChange(tags.filter(x=>x!==t)); renderInspector(); }},'×')])));
+  wrap.appendChild(row); wrap.appendChild(pills); return wrap;
+}
+function chipsEditor(label, items, onChange){
+  const wrap = h('div'); wrap.appendChild(h('label',{}, label));
+  const row = h('div',{class:'toolbar'});
+  const input = h('input',{placeholder:`Add ${label.slice(0,-1)} & Enter`});
+  input.onkeydown = e=>{ if(e.key==='Enter' && input.value.trim()){ const next=[...items, input.value.trim()]; onChange(next); renderInspector(); input.value=''; } };
+  row.appendChild(input);
+  const chips = h('div',{class:'toolbar'});
+  (items||[]).forEach(t=> chips.appendChild(h('span',{class:'pill'}, [t, h('button',{class:'btn danger', onclick:()=>{ onChange(items.filter(x=>x!==t)); renderInspector(); }},'×')])));
+  wrap.appendChild(row); wrap.appendChild(chips); return wrap;
+}
+
+/*****************
+ * Import / Export
+ *****************/
+function exportJSON(){
+  const data = sortAll(structuredClone(state));
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'beats-events-scenes.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+
+document.getElementById('importer').addEventListener('change', (e)=>{
+  const file = e.target.files?.[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try {
+      const data = JSON.parse(reader.result);
+      if(!data || !Array.isArray(data.beats) || !Array.isArray(data.events) || !Array.isArray(data.scenes)) throw new Error('Bad shape');
+      // simple normalization
+      ['beats','events','scenes'].forEach(k=> data[k].forEach((x,i)=> x.order = x.order ?? (i+1)));
+      save(data); focus={type:null,id:null}; render();
+    } catch(err){ alert('Import failed: '+err.message); }
+  };
+  reader.readAsText(file);
+});
+
+/*****************
+ * Boot
+ *****************/
+render();
+
+</script>
+</body>
+</html>

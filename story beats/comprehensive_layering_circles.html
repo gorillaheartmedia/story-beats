@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comprehensive Layering Circles • Story Beats</title>
+<style>
+:root {
+  --bg:#0b0f14;
+  --panel:#111825;
+  --panel-2:#0f1622;
+  --text:#e6eef8;
+  --muted:#a7b3c5;
+  --accent:#7c9cff;
+  --accent-2:#60d4a7;
+  --warn:#ffcc66;
+  --danger:#ff7c7c;
+  --radius:18px;
+}
+body {
+  margin:0; background:var(--bg); color:var(--text);
+  font:15px/1.5 system-ui, sans-serif;
+  display:flex; flex-direction:column; height:100vh;
+}
+header {
+  padding:12px 20px; background:var(--panel);
+  display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+header h1 { font-size:18px; margin:0; }
+header .grow { flex:1; }
+.btn {
+  background: var(--accent); color:#fff;
+  border:0; border-radius:8px; padding:6px 12px;
+  font-weight:600; cursor:pointer;
+}
+.btn.secondary { background:rgba(255,255,255,.05); color:var(--muted); }
+main { flex:1; display:flex; overflow:hidden; }
+.circle-panel { flex:1; display:flex; align-items:center; justify-content:center; }
+.details-panel {
+  width:360px; background:var(--panel-2);
+  padding:16px; overflow-y:auto;
+}
+.details-panel h2 { margin-top:0; }
+.toolbar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+select {
+  background: rgba(255,255,255,.05);
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  padding: 4px;
+}
+.indicator-dot {
+  r:6;
+  stroke:var(--panel-2);
+  stroke-width:2;
+}
+.modal-backdrop {
+  position:fixed; inset:0; background:rgba(0,0,0,.5);
+  display:none; align-items:center; justify-content:center;
+  z-index:100;
+}
+.modal {
+  background:var(--panel);
+  padding:16px; border-radius:12px;
+  width:400px; max-width:90%;
+}
+.modal h3 { margin-top:0; }
+.field { margin-bottom:10px; }
+.field label { display:block; font-size:13px; color:var(--muted); margin-bottom:4px; }
+.field input, .field textarea, .field select {
+  width:100%; padding:6px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:6px; color:var(--text);
+}
+.event-link {
+  display:flex; justify-content:space-between; align-items:center;
+  background:rgba(255,255,255,.05); padding:4px 6px; border-radius:6px;
+  margin-bottom:4px;
+}
+.event-link button {
+  background:var(--danger); color:#000; border:none;
+  border-radius:4px; padding:2px 6px; cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌀 Layering Circles</h1>
+  <span class="grow"></span>
+  <button class="btn secondary" id="backBtn">Back</button>
+</header>
+
+<main>
+  <div class="circle-panel">
+    <svg id="layerMap" viewBox="0 0 600 600" width="600" height="600">
+      <!-- arcs + labels injected by JS -->
+    </svg>
+  </div>
+  <div class="details-panel">
+    <div class="toolbar">
+      <select id="characterSelector"></select>
+      <button class="btn secondary" id="pdfExportBtn">PDF Export</button>
+      <button class="btn secondary" id="exportBtn">Export</button>
+      <input type="file" id="importFile" style="display:none" accept="application/json">
+      <button class="btn secondary" id="importBtn">Import</button>
+    </div>
+    <h2 id="sideTitle">Click a category</h2>
+    <div id="sideContent"></div>
+  </div>
+</main>
+<script>
+// === URL Params ===
+const params = new URLSearchParams(window.location.search);
+const projectId = params.get("projectId") || "defaultProject";
+
+// Character ID retrieval with fallback to localStorage
+let characterId = params.get("characterId");
+if (!characterId) {
+  const lastChar = localStorage.getItem(`lastCharacterId:${projectId}`);
+  if (lastChar) {
+    characterId = lastChar;
+  }
+}
+if (characterId) {
+  localStorage.setItem(`lastCharacterId:${projectId}`, characterId);
+}
+
+// === Layers (inside out) with added categories ===
+const defaultLayers = {
+  "Self": ["Internal thoughts","Sensory awareness","Physical health","Actions","Behaviors"],
+  "Personal Relationships": ["Close friends","Romantic partners","Mentors","Allies"],
+  "Family": ["Immediate family","Extended family","Found family"],
+  "Community": ["Neighbors","Groups","Organizations"],
+  "Law / Institutions": ["Norms","Beliefs","Influences","Economy","History"],
+  "Environment / World": ["Geography","Climate","Political systems"]
+};
+
+// === Storage ===
+const key = () => `sb:lc:${projectId}:${characterId}`;
+function makeDefaultData(){
+  const data = {};
+  for (let layer in defaultLayers){
+    data[layer] = {};
+    defaultLayers[layer].forEach(cat=>{
+      data[layer][cat] = { mode:"", qualityBefore:"", qualityAfter:"", whyPersist:"", qualitiesSustain:"", notes:"", eventLinks:[] };
+    });
+  }
+  return data;
+}
+function loadData(){
+  try { return JSON.parse(localStorage.getItem(key())) || makeDefaultData(); }
+  catch { return makeDefaultData(); }
+}
+function saveData(){
+  localStorage.setItem(key(), JSON.stringify(data));
+  if (characters[characterId]) {
+    characters[characterId].layeringCircles = data;
+    localStorage.setItem("characters", JSON.stringify(characters));
+  }
+}
+let data = loadData();
+
+// === Load linked character ===
+let characters = JSON.parse(localStorage.getItem("characters") || "[]");
+let char = characters[characterId] || null;
+
+// === Draw arcs ===
+const svg = document.getElementById('layerMap');
+function drawCircles(){
+  svg.innerHTML='';
+  const center = 300;
+  const ringWidth = 35;
+  let radius = ringWidth;
+  const layers = Object.keys(defaultLayers);
+  layers.forEach(layer=>{
+    const cats = defaultLayers[layer];
+    const sliceAngle = (2*Math.PI)/cats.length;
+    const outerR = radius + ringWidth;
+    cats.forEach((cat, i)=>{
+      const startAngle = i*sliceAngle;
+      const endAngle = startAngle + sliceAngle;
+      const largeArc = sliceAngle > Math.PI ? 1 : 0;
+      const x1 = center + outerR * Math.cos(startAngle);
+      const y1 = center + outerR * Math.sin(startAngle);
+      const x2 = center + outerR * Math.cos(endAngle);
+      const y2 = center + outerR * Math.sin(endAngle);
+      const x3 = center + radius * Math.cos(endAngle);
+      const y3 = center + radius * Math.sin(endAngle);
+      const x4 = center + radius * Math.cos(startAngle);
+      const y4 = center + radius * Math.sin(startAngle);
+
+      const pathData = [
+        `M ${x1} ${y1}`,
+        `A ${outerR} ${outerR} 0 ${largeArc} 1 ${x2} ${y2}`,
+        `L ${x3} ${y3}`,
+        `A ${radius} ${radius} 0 ${largeArc} 0 ${x4} ${y4}`,
+        'Z'
+      ].join(' ');
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', pathData);
+      path.setAttribute('fill', `rgba(124,156,255,0.08)`);
+      path.setAttribute('stroke', 'rgba(255,255,255,0.1)');
+      path.dataset.layer = layer;
+      path.dataset.category = cat;
+
+      path.addEventListener('mouseover', ()=> path.setAttribute('fill', `rgba(124,156,255,0.3)`));
+      path.addEventListener('mouseout', ()=> path.setAttribute('fill', `rgba(124,156,255,0.08)`));
+      path.addEventListener('click', ()=> openQualityEditor(layer, cat));
+
+      svg.appendChild(path);
+
+      const midAngle = startAngle + sliceAngle/2;
+      const labelX = center + (radius + ringWidth/2) * Math.cos(midAngle);
+      const labelY = center + (radius + ringWidth/2) * Math.sin(midAngle);
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x', labelX);
+      text.setAttribute('y', labelY);
+      text.setAttribute('text-anchor','middle');
+      text.setAttribute('alignment-baseline','middle');
+      text.setAttribute('fill', '#ccc');
+      text.setAttribute('font-size','10');
+      text.textContent = cat;
+      svg.appendChild(text);
+    });
+    radius += (ringWidth + 8);
+  });
+}
+drawCircles();
+
+// === Character dropdown ===
+function loadCharacterList(){
+  const sel = document.getElementById('characterSelector');
+  sel.innerHTML='';
+  const storedChars = [];
+  for (let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if (k.startsWith(`sb:lc:${projectId}:`)){
+      storedChars.push(k.split(':')[3]);
+    }
+  }
+  const unique = [...new Set(storedChars)];
+  unique.forEach(cid=>{
+    const opt = document.createElement('option');
+    opt.value = cid; opt.textContent = cid;
+    if (cid==characterId) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  const newOpt = document.createElement('option');
+  newOpt.value = '__new__'; newOpt.textContent = '+ New Character...';
+  sel.appendChild(newOpt);
+}
+loadCharacterList();
+document.getElementById('characterSelector').onchange = e=>{
+  if (e.target.value==='__new__'){
+    const newId = prompt('Enter new character ID:');
+    if (!newId) { loadCharacterList(); return; }
+    characterId=newId; data=makeDefaultData(); saveData();
+  } else {
+    characterId=e.target.value; data=loadData();
+  }
+  drawCircles(); loadCharacterList(); updateBackBtn();
+};
+
+// === Back button ===
+function updateBackBtn(){
+  document.getElementById('backBtn').onclick=()=>{
+    location.href=`character_profile.html?projectId=${encodeURIComponent(projectId)}&id=${encodeURIComponent(characterId)}`;
+  };
+}
+updateBackBtn();
+
+// === Export / Import ===
+document.getElementById('exportBtn').onclick=()=>{
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`layering_circles-${projectId}-${characterId}.json`;
+  a.click();
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt=>{
+    try {
+      const imported = JSON.parse(evt.target.result);
+      data = imported;
+      saveData(); drawCircles();
+    } catch { alert('Invalid file'); }
+  };
+  reader.readAsText(file);
+};
+// === Modal logic ===
+const modal = document.createElement('div');
+modal.className = 'modal-backdrop';
+modal.innerHTML = `
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <div class="field">
+      <label for="mode">Mode</label>
+      <select id="mode">
+        <option value="">None</option>
+        <option value="affected">Affected</option>
+        <option value="influencing">Influencing</option>
+        <option value="both">Both</option>
+      </select>
+    </div>
+    <div class="field" id="affectedFields">
+      <label>Quality Before</label>
+      <input id="qualityBefore" type="text">
+      <label>Quality After</label>
+      <input id="qualityAfter" type="text">
+    </div>
+    <div class="field" id="influencingFields">
+      <label>Why does it persist?</label>
+      <input id="whyPersist" type="text">
+      <label>Qualities that sustain it</label>
+      <input id="qualitiesSustain" type="text">
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="notes" rows="3"></textarea>
+    </div>
+    <div class="field">
+      <label>Event Links</label>
+      <div id="eventLinks"></div>
+      <button class="btn secondary" id="addEventLink">+ Add Event Link</button>
+    </div>
+    <div style="text-align:right; margin-top:10px;">
+      <button class="btn" id="saveQuality">Save</button>
+      <button class="btn secondary" id="cancelQuality">Cancel</button>
+    </div>
+  </div>
+`;
+document.body.appendChild(modal);
+
+// Show character name in header
+if (char && char.name) {
+  const header = document.querySelector('header h1');
+  header.textContent = `🌀 Layering Circles — ${char.name}`;
+}
+
+let currentLayer='', currentCat='';
+function openQualityEditor(layer, cat){
+  currentLayer=layer; currentCat=cat;
+  modal.style.display='flex';
+  document.getElementById('modalTitle').textContent=`${layer} — ${cat}`;
+  const entry = data[layer][cat] || {};
+  document.getElementById('mode').value = entry.mode || '';
+  document.getElementById('qualityBefore').value = entry.qualityBefore || '';
+  document.getElementById('qualityAfter').value = entry.qualityAfter || '';
+  document.getElementById('whyPersist').value = entry.whyPersist || '';
+  document.getElementById('qualitiesSustain').value = entry.qualitiesSustain || '';
+  document.getElementById('notes').value = entry.notes || '';
+  renderEventLinks(entry.eventLinks || []);
+}
+document.getElementById('cancelQuality').onclick=()=>modal.style.display='none';
+document.getElementById('saveQuality').onclick=()=>{
+  data[currentLayer][currentCat] = {
+    mode: document.getElementById('mode').value,
+    qualityBefore: document.getElementById('qualityBefore').value,
+    qualityAfter: document.getElementById('qualityAfter').value,
+    whyPersist: document.getElementById('whyPersist').value,
+    qualitiesSustain: document.getElementById('qualitiesSustain').value,
+    notes: document.getElementById('notes').value,
+    eventLinks: collectEventLinks()
+  };
+  saveData();
+  drawCircles();
+  modal.style.display='none';
+};
+
+// === Event links ===
+function renderEventLinks(links){
+  const wrap = document.getElementById('eventLinks');
+  wrap.innerHTML='';
+  links.forEach((l,idx)=>{
+    const row = document.createElement('div');
+    row.className='event-link';
+    const link = document.createElement('a');
+    link.href=`event_manager.html?projectId=${projectId}&characterId=${characterId}&eventId=${l.eventId}`;
+    link.textContent=l.label||l.eventId;
+    link.style.color='var(--accent)';
+    row.appendChild(link);
+    const del = document.createElement('button');
+    del.textContent='✕';
+    del.onclick=()=>{
+      const arr = collectEventLinks();
+      arr.splice(idx,1);
+      renderEventLinks(arr);
+    };
+    row.appendChild(del);
+    wrap.appendChild(row);
+  });
+}
+function collectEventLinks(){
+  const rows = document.querySelectorAll('#eventLinks .event-link');
+  return Array.from(rows).map(r=>{
+    const a = r.querySelector('a');
+    const label = a.textContent;
+    const eventId = a.href.split('eventId=')[1];
+    return {eventId,label};
+  });
+}
+document.getElementById('addEventLink').onclick=()=>{
+  const id = prompt('Enter Event ID:');
+  if (!id) return;
+  const label = prompt('Enter label (optional):', id);
+  const arr = collectEventLinks();
+  arr.push({eventId:id, label:label});
+  renderEventLinks(arr);
+};
+
+// === Multi-page PDF Export (SVG first page as high-DPI PNG) ===
+document.getElementById("pdfExportBtn").addEventListener("click", async () => {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  // --- First page: high-DPI PNG from SVG ---
+  const svgElement = document.getElementById("layerMap");
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(svgElement);
+
+  const img = new Image();
+  const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
+  img.src = url;
+
+  await new Promise(resolve => {
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const dpiScale = 3; // High DPI factor
+      canvas.width = img.width * dpiScale;
+      canvas.height = img.height * dpiScale;
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpiScale, 0, 0, dpiScale, 0, 0);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      const pngData = canvas.toDataURL("image/png");
+      const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+      const imgWidth = canvas.width * ratio;
+      const imgHeight = canvas.height * ratio;
+      const xOffset = (pageWidth - imgWidth) / 2;
+      const yOffset = (pageHeight - imgHeight) / 2;
+
+      pdf.setFontSize(18);
+      pdf.text("Layering Circles Map", pageWidth / 2, 30, { align: "center" });
+      pdf.addImage(pngData, "PNG", xOffset, yOffset, imgWidth, imgHeight);
+
+      resolve();
+    };
+  });
+
+  // --- Add each layer as subsequent pages ---
+  const layers = Object.keys(defaultLayers);
+  for (let i = 0; i < layers.length; i++) {
+    pdf.addPage();
+    const layerName = layers[i];
+    const tempDiv = document.createElement("div");
+    tempDiv.style.padding = "20px";
+    tempDiv.style.background = "#0b0f14";
+    tempDiv.style.color = "#fff";
+    tempDiv.innerHTML = `<h2>${layerName}</h2>`;
+    const cats = defaultLayers[layerName];
+    cats.forEach(cat => {
+      const entry = data[layerName][cat];
+      tempDiv.innerHTML += `
+        <div style="margin-bottom:10px;">
+          <strong>${cat}</strong><br>
+          Mode: ${entry.mode || ""}<br>
+          Quality Before: ${entry.qualityBefore || ""}<br>
+          Quality After: ${entry.qualityAfter || ""}<br>
+          Why Persist: ${entry.whyPersist || ""}<br>
+          Qualities Sustain: ${entry.qualitiesSustain || ""}<br>
+          Notes: ${entry.notes || ""}<br>
+        </div>
+      `;
+    });
+    document.body.appendChild(tempDiv);
+
+    const catCanvas = await html2canvas(tempDiv, { backgroundColor: "#0b0f14", scale: 2 });
+    const catImgData = catCanvas.toDataURL("image/png");
+    const catRatio = Math.min(pageWidth / catCanvas.width, pageHeight / catCanvas.height);
+    const xOffset2 = (pageWidth - catCanvas.width * catRatio) / 2;
+    const yOffset2 = (pageHeight - catCanvas.height * catRatio) / 2;
+    pdf.addImage(catImgData, "PNG", xOffset2, yOffset2, catCanvas.width * catRatio, catCanvas.height * catRatio);
+
+    document.body.removeChild(tempDiv);
+  }
+
+  pdf.save(`layering_circles-${projectId}-${characterId}.pdf`);
+});
+</script>
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html>

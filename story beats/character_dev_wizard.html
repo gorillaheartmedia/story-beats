@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Character Development Wizard</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #eaf3ff;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    .modal-bg {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(16,34,80,0.91);
+      z-index: 99;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal {
+      background: #1b335a;
+      max-width: 510px;
+      width: 96vw;
+      padding: 36px 28px 26px 28px;
+      border-radius: 18px;
+      box-shadow: 0 7px 44px #06103acc;
+      position: relative;
+      animation: fadein .18s;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateY(36px);} to {opacity:1;transform:none;}}
+    .modal h2 {
+      color: #fffbb0;
+      margin: 0 0 13px 0;
+      font-size: 1.25em;
+      letter-spacing: 0.03em;
+    }
+    .step-indicator {
+      margin-bottom: 13px;
+      color: #bee1fd;
+      font-size: 1.02em;
+      opacity: .77;
+    }
+    .modal label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 8px;
+      margin-top: 9px;
+      color: #eaf3ff;
+    }
+    .modal textarea, .modal select {
+      width: 100%;
+      padding: 11px 10px;
+      font-size: 1.06em;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #eaf3ff;
+      margin-bottom: 18px;
+      resize: vertical;
+      min-height: 52px;
+    }
+    .modal textarea:focus, .modal select:focus {
+      border: 1.7px solid #3b82f6;
+      background: #223d7b6b;
+    }
+    .modal .wizard-btns {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 3px;
+    }
+    .modal button {
+      padding: 10px 22px;
+      font-size: 1.04em;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #12326d38;
+      transition: background 0.14s, color 0.11s;
+    }
+    .modal button:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .profile-btn {
+      position: absolute;
+      left: 13px;
+      top: 11px;
+      background: linear-gradient(92deg, #fffbb0 0%, #60a5fa 100%);
+      color: #16306a;
+      font-size: 1.06em;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 19px;
+      cursor: pointer;
+      z-index: 11;
+      box-shadow: 0 2px 8px #fffbf299;
+      transition: background 0.15s, color 0.13s;
+    }
+    .profile-btn:hover {
+      background: linear-gradient(92deg, #60a5fa 0%, #fffbb0 100%);
+      color: #143575;
+    }
+    .modal .close-btn {
+      position: absolute; right: 13px; top: 11px;
+      background: none; border: none; color: #aee5ff; font-size: 1.45em; cursor: pointer;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 7px;
+      background: #223d7b77;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      background: linear-gradient(90deg,#4befff,#1958ca 90%);
+      border-radius: 6px;
+      transition: width 0.32s;
+    }
+    .summary-block {
+      background: #18355c;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 11px;
+      box-shadow: 0 2px 10px #10399a44;
+      color: #ffe285;
+    }
+    .summary-block h3 {
+      color: #fffbb0;
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 600px) {
+      .modal { padding: 16px 3vw 18px 3vw; }
+    }
+  </style>
+  <script src="project-safety.js"></script>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="modal-bg" id="modalBg">
+    <div class="modal" id="wizardModal">
+      <button class="profile-btn" onclick="returnToProfile()" title="Return to Profile">← Return to Profile</button>
+      <button class="close-btn" onclick="closeWizard()" title="Close">&times;</button>
+      <div class="progress-bar"><div id="progressInner" class="progress-bar-inner"></div></div>
+      <div class="step-indicator" id="stepIndicator"></div>
+      <form id="wizardForm" onsubmit="return false;">
+        <div id="wizardContent"></div>
+        <div class="wizard-btns" id="wizardBtns"></div>
+      </form>
+    </div>
+  </div>
+  <script>
+  // Get character name from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const charName = urlParams.get("character") || "Unnamed";
+
+  // Find character data (for image, summary, etc)
+  let profileImg = "";
+  let charId = 0;
+  let characters = [];
+  try {
+    characters = JSON.parse(localStorage.getItem("characters") || "[]");
+    const charObj = characters.find((c, idx) => {
+      if ((c.name || '').toLowerCase() === charName.toLowerCase()) {
+        charId = idx;
+        return true;
+      }
+      return false;
+    });
+    if (charObj && charObj.image) profileImg = charObj.image;
+  } catch (e) {}
+
+  const steps = [
+    { label: "What is your character's core goal or desire?",        id: 'goal',        type: 'textarea' },
+    { label: "Why do they want it?",                                id: 'motivation',  type: 'textarea' },
+    { label: "What’s at stake if they fail?",                       id: 'stakes',      type: 'textarea' },
+    { label: "What obstacle blocks them from achieving this goal?",  id: 'obstacle',    type: 'textarea' },
+    { label: "What inner flaw or false belief holds them back?",     id: 'flaw',        type: 'textarea' },
+    { label: "What do they need to learn or change?",                id: 'growth',      type: 'textarea' },
+    { label: "What action demonstrates their transformation?",       id: 'turningPoint',type: 'textarea' },
+    { label: "What do they lose or sacrifice along the way?",        id: 'sacrifice',   type: 'textarea' },
+    { label: "What secret complicates their journey?",               id: 'secret',      type: 'textarea' },
+    { label: "Choose the character arc type:",                      id: 'arc',         type: 'select', options: [
+      {value:'Positive', label:'Positive Arc (they grow and change)'},
+      {value:'Negative', label:'Negative Arc (they are broken by events)'},
+      {value:'Flat', label:'Flat Arc (they change the world around them)'}
+    ]}
+  ];
+  let currentStep = 0;
+  let answers = {};
+
+  function renderStep() {
+    const s = steps[currentStep];
+    document.getElementById('stepIndicator').innerText = `Step ${currentStep+1} of ${steps.length}`;
+    document.getElementById('progressInner').style.width = `${Math.round((currentStep+1)/steps.length*100)}%`;
+    let html = '';
+    if(s.type === 'textarea') {
+      html = `
+        <label for="${s.id}">${s.label}</label>
+        <textarea id="${s.id}" rows="3">${answers[s.id]||''}</textarea>
+      `;
+    } else if (s.type === 'select') {
+      html = `<label for="${s.id}">${s.label}</label>
+      <select id="${s.id}">
+        ${s.options.map(opt=>`<option value="${opt.value}"${answers[s.id]===opt.value?' selected':''}>${opt.label}</option>`).join('')}
+      </select>`;
+    }
+    document.getElementById('wizardContent').innerHTML = html;
+    // Buttons
+    let btns = '';
+    if(currentStep>0) btns += '<button type="button" onclick="prevStep()">⬅ Back</button>';
+    btns += '<button type="button" onclick="nextStep()">'+(currentStep===steps.length-1?'Finish':'Next ➡')+'</button>';
+    document.getElementById('wizardBtns').innerHTML = btns;
+  }
+
+  function nextStep() {
+    const s = steps[currentStep];
+    answers[s.id] = (s.type==='select')
+      ? document.getElementById(s.id).value
+      : document.getElementById(s.id).value.trim();
+    if(currentStep < steps.length-1) {
+      currentStep++;
+      renderStep();
+    } else {
+      showSummary();
+    }
+  }
+
+  function prevStep() {
+    const s = steps[currentStep];
+    answers[s.id] = (s.type==='select')
+      ? document.getElementById(s.id).value
+      : document.getElementById(s.id).value.trim();
+    if(currentStep > 0) {
+      currentStep--;
+      renderStep();
+    }
+  }
+
+  function showSummary() {
+    localStorage.setItem("charDevData", JSON.stringify(answers));
+    let arcLine = "";
+    if (answers.arc === "Positive") {
+      arcLine = "Ultimately, this is a story of growth and change.";
+    } else if (answers.arc === "Negative") {
+      arcLine = "In the end, the journey breaks the character, changing them for the worse.";
+    } else {
+      arcLine = "Though the world may shift around them, the character remains true to themselves.";
+    }
+    let custom = `<div class='summary-block'>
+      ${profileImg ? `<div style="text-align:center;margin-bottom:13px;">
+        <img src="${profileImg}" alt="Profile Image" style="width:96px;height:96px;object-fit:cover;border-radius:50%;box-shadow:0 2px 16px #0a194e55;">
+        <div style="margin-top:8px;font-size:1.17em;color:#fff;font-weight:600;letter-spacing:0.02em;">${charName}</div>
+      </div>` : `<div style="text-align:center;margin-bottom:13px;">
+        <div style="width:96px;height:96px;display:inline-block;border-radius:50%;background:#20376a55;color:#bcdcff;display:flex;align-items:center;justify-content:center;font-size:2.3em;font-weight:700;">${(charName[0]||'?').toUpperCase()}</div>
+        <div style="margin-top:8px;font-size:1.17em;color:#fff;font-weight:600;letter-spacing:0.02em;">${charName}</div>
+      </div>`}
+      <h3>🧠 Character Arc: Narrative Summary</h3>
+      <p><b>Goal:</b> The character desires <em>${answers.goal||"something"}</em>. ${answers.motivation ? `They are driven by ${answers.motivation}.` : ""} ${answers.stakes ? `If they fail, they risk ${answers.stakes}.` : ""}</p>
+      <p>${answers.obstacle ? `Standing in their way is ${answers.obstacle},` : ""} ${answers.flaw ? `and within themselves, they struggle with the false belief: "${answers.flaw}."` : ""}</p>
+      <p>${answers.growth ? `To overcome, they must learn to ${answers.growth}.` : ""} ${answers.turningPoint ? `Their transformation is revealed when they finally ${answers.turningPoint}.` : ""}</p>
+      <p>${answers.sacrifice ? `In the process, they sacrifice ${answers.sacrifice}.` : ""} ${answers.secret ? `All the while, they hide the secret: "${answers.secret}".` : ""}</p>
+      <p style="margin-top:10px;"><b>${arcLine}</b></p>
+      </div>
+      <div style="text-align:right;margin-top:17px;">
+        <button onclick="returnToProfileScreen()">Done</button>
+        <button onclick="copySummary()" style="margin-left:12px;background:#4befff;color:#18357b;">Copy</button>
+      </div>`;
+    document.getElementById('wizardContent').innerHTML = custom;
+    document.getElementById('wizardBtns').innerHTML = '';
+    document.getElementById('stepIndicator').innerText = 'Summary';
+    document.getElementById('progressInner').style.width = '100%';
+
+    // --- Save summary to character in localStorage ---
+    try {
+      if (characters && characters[charId]) {
+        characters[charId].summary = custom;
+        localStorage.setItem("characters", JSON.stringify(characters));
+      }
+    } catch (e) {}
+  }
+
+  function closeWizard() {
+    document.getElementById('modalBg').style.display = 'none';
+  }
+
+  function returnToProfileScreen() {
+    // Redirect to the profile page for this character id (if available)
+    window.location.href = "character_profile.html?id=" + charId;
+  }
+
+  function copySummary() {
+    const el = document.createElement('textarea');
+    el.value = document.querySelector('.summary-block').innerText;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    alert('Summary copied to clipboard!');
+  }
+
+  window.onload = function() {
+    renderStep();
+    document.getElementById('modalBg').style.display = 'flex';
+  };
+</script>
+
+</body>
+</html>

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dialogue Builder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    html, body {
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      min-height: 100vh; margin: 0; padding: 0;
+      font-family: 'Inter', Arial, sans-serif;
+      color: #eaf3ff;
+    }
+    .container {
+      max-width: 1120px;
+      margin: 28px auto;
+      background: rgba(24,39,70,0.98);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a66;
+      padding: 32px 34px 38px 34px;
+      border: 1.5px solid #3b82f644;
+    }
+    h1 {
+      font-size: 2.15em;
+      margin-bottom: 10px;
+      color: #fff;
+      letter-spacing: 0.01em;
+    }
+    .flex { display: flex; gap: 22px; }
+    .flex-col { display: flex; flex-direction: column; }
+    .section {
+      margin-bottom: 28px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #2b4c99;
+    }
+    label {
+      font-weight: 500;
+      margin-top: 14px;
+      display: block;
+      color: #f0f4ff;
+    }
+    input, select, textarea {
+      display: block;
+      margin: 6px 0 18px 0;
+      padding: 10px 14px;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      font-size: 1.07em;
+      outline: none;
+      transition: border .18s;
+    }
+    input:focus, textarea:focus, select:focus {
+      border: 1.8px solid #3b82f6;
+      background: #223d7b6b;
+    }
+    textarea {resize: vertical;}
+    .char-list, .tags, .line-list { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;}
+    .tag, .status, .filter-tag {
+      background: #2563eb33;
+      color: #bee1fd;
+      padding: 4px 11px;
+      border-radius: 4px;
+      font-size: .99em;
+      border: 1.2px solid #3b82f655;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      margin-right: 6px;
+      margin-bottom: 2px;
+    }
+    .tag button, .filter-tag button {
+      background: none;
+      border: none;
+      margin-left: 5px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .add-char-btn {
+      background: linear-gradient(92deg, #3282f0, #2b71ea 80%);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 7px 18px;
+      margin-left: 0;
+      margin-top: 0;
+      cursor: pointer;
+      transition: background .14s;
+    }
+    .add-char-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .line-block {
+      background: #203a64b5;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 12px #1a325a1a;
+      display: flex;
+      align-items: flex-start;
+      gap: 13px;
+    }
+    .line-block select, .line-block input, .line-block textarea {
+      margin: 0 0 0 0;
+      min-width: 80px;
+    }
+    .line-block .del-btn {
+      background: none;
+      color: #ffb0c0;
+      border: none;
+      font-size: 1.11em;
+      margin-left: 10px;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+    .line-block .del-btn:hover { color: #f99; }
+    .directory-table {
+      width: 100%;
+      background: #142e5e70;
+      border-radius: 13px;
+      border-collapse: collapse;
+      margin-top: 14px;
+      color: #eaf3ff;
+    }
+    .directory-table th, .directory-table td {
+      padding: 8px 13px;
+      border-bottom: 1px solid #26459c40;
+      text-align: left;
+      font-size: 1.03em;
+    }
+    .directory-table th {
+      color: #93bffd;
+      font-weight: 700;
+      background: #1a296c75;
+      border-top: 1.2px solid #3456a6;
+    }
+    .directory-table tr:last-child td { border-bottom: none; }
+    .dir-btn {
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 6px 17px;
+      margin: 3px 2px 0 0;
+      cursor: pointer;
+      transition: background .13s, color .11s;
+    }
+    .dir-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+    .rel-display, .interaction-count {
+      background: #18355c88;
+      padding: 6px 13px;
+      border-radius: 8px;
+      font-size: 1.01em;
+      margin-bottom: 9px;
+      color: #b4ecff;
+    }
+    .interaction-count {
+      color: #fffbb0;
+      background: #1c293a;
+      margin-left: 6px;
+    }
+    .filter-row {
+      margin: 12px 0 5px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 13px;
+      align-items: center;
+      color: #b2d6ff;
+    }
+    .filter-row label { margin: 0 6px 0 0; }
+    .search-box {
+      padding: 6px 13px;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #eaf3fa;
+      font-size: 1em;
+      outline: none;
+    }
+    .search-box:focus { border: 1.8px solid #3b82f6;}
+    @media (max-width: 800px) {
+      .container { padding: 13px 2vw 13px 2vw;}
+      .flex { flex-direction: column; gap: 8px; }
+    }
+    .small-btn {
+      background: none; border: none; color: #8bfcff; font-size: 1.05em;
+      cursor: pointer; padding: 2px 4px; margin-left: 6px;
+    }
+    .small-btn:hover { color: #fffbb0; text-decoration: underline;}
+.fab-research {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 9999;
+  width: 62px;
+  height: 62px;
+  background: linear-gradient(130deg, #4befff 60%, #1958ca 100%);
+  border-radius: 50%;
+  box-shadow: 0 2px 22px #2b7aff66;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .14s, box-shadow .12s;
+}
+.fab-research:hover {
+  background: linear-gradient(110deg, #1958ca 40%, #4befff 100%);
+  box-shadow: 0 4px 34px #3be3ff99;
+}
+.fab-research .fab-icon {
+  font-size: 2em;
+  color: #14283c;
+  filter: drop-shadow(0 2px 4px #fffbe933);
+  user-select: none;
+}
+.fab-research:after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 78px;
+  right: 0;
+  background: #14283ccc;
+  color: #fffbb0;
+  padding: 6px 16px;
+  border-radius: 9px;
+  font-size: 1em;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .17s, transform .17s;
+  white-space: nowrap;
+}
+.fab-research:hover:after {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+</head>
+<body>
+  <div class="container">
+    <h1>💬 Dialogue Builder</h1>
+    <div class="section">
+      <div class="flex" style="gap:32px; align-items: flex-start;">
+        <div style="flex:2;">
+            
+          <label>Characters Involved</label>
+          <div class="char-list" id="charList"></div>
+          <select id="charPicker"></select>
+          <button class="add-char-btn" onclick="addCharacter()">+ Add Character</button>
+          <div id="relGrid"></div>
+          <div id="pairCounts"></div>
+        </div>
+        <div style="flex:3;">
+          <div class="flex" style="gap:14px;">
+            <div>
+              <label>Scene</label>
+              <select id="scenePicker"></select>
+            </div>
+            <div>
+              <label>Event</label>
+              <select id="eventPicker"></select>
+            </div>
+            <div>
+              <label>Beat</label>
+              <select id="beatPicker"></select>
+            </div>
+          </div>
+          <div id="contextInfo" style="color:#bee1fd; font-size:1.03em; margin:8px 0 3px 0;"></div>
+          <label>Status
+            <select id="statusPicker">
+              <option>Draft</option>
+              <option>Final</option>
+              <option>Needs Review</option>
+              <option>Flagged</option>
+              <option>Archived</option>
+            </select>
+          </label>
+          <label>Tags</label>
+          <div class="tags" id="tagList"></div>
+          <input type="text" id="tagInput" placeholder="Add tag and press Enter" onkeydown="if(event.key==='Enter'){addTag();return false;}">
+        </div>
+      </div>
+    </div>
+    <div class="section">
+      <label>Dialogue Lines</label>
+      <div id="lineList"></div>
+      <button class="add-char-btn" onclick="addLine()">+ Add Line</button>
+    </div>
+    <button onclick="window.location.href='messenger_dialogue.html'" class="dir-btn" style="float:right;margin-top:-10px;margin-left:8px;">
+  💬 Try Messenger Mode!!
+</button>
+    <button class="dir-btn" onclick="saveDialogue()">💾 Save Dialogue</button>
+    <button class="dir-btn" onclick="resetForm()">+ New Dialogue</button>
+    <hr style="margin: 28px 0 18px 0;">
+    <h2 style="margin:12px 0 7px 0;">Dialogue Directory</h2>
+    <div class="filter-row">
+      <label>Search:</label><input id="searchBox" class="search-box" type="text" placeholder="Speaker, Tag, Status, Line..." oninput="renderDirectory()">
+      <label>Status:</label>
+      <select id="statusFilter" onchange="renderDirectory()">
+        <option value="">Any</option>
+        <option>Draft</option>
+        <option>Final</option>
+        <option>Needs Review</option>
+        <option>Flagged</option>
+        <option>Archived</option>
+      </select>
+      <label>Tag:</label>
+      <input id="tagFilter" class="search-box" style="width:110px;" type="text" placeholder="Tag..." oninput="renderDirectory()">
+    </div>
+    <table class="directory-table" id="dialogueDirectory"></table>
+  </div>
+  <script>
+    // --- Load project data ---
+    let characters = JSON.parse(localStorage.getItem("characters")||"[]");
+    let relationships = JSON.parse(localStorage.getItem("relationships")||"{}");
+    let projects = JSON.parse(localStorage.getItem("plotProjects")||"[]");
+    let currentProject = projects.length ? projects[0] : null;
+    let scenes = currentProject?.scenes || [];
+    let events = currentProject?.events || [];
+    let beats = currentProject?.beats || [];
+    let dialogueList = JSON.parse(localStorage.getItem("dialogues")||"[]");
+
+    // --- State ---
+    let dlgChars = [];
+    let dlgTags = [];
+    let dlgLines = [];
+    let dlgScene = "";
+    let dlgEvent = "";
+    let dlgBeat = "";
+    let dlgStatus = "Draft";
+    let editIdx = -1;
+
+    // --- Populate pickers ---
+    function populatePickers() {
+      // Characters
+      let picker = document.getElementById('charPicker');
+      picker.innerHTML = "<option value=''>Choose Character...</option>";
+      characters.forEach((c,i) => {
+        if (!dlgChars.includes(c.name))
+          picker.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+      });
+      // Scene
+      let sceneSel = document.getElementById('scenePicker');
+      sceneSel.innerHTML = "<option value=''>None</option>";
+      scenes.forEach((s,i) => {
+        sceneSel.innerHTML += `<option value="${i}">${s.title||("Scene "+(i+1))}</option>`;
+      });
+      sceneSel.value = dlgScene;
+      // Event
+      let eventSel = document.getElementById('eventPicker');
+      eventSel.innerHTML = "<option value=''>None</option>";
+      events.forEach((e,i) => {
+        eventSel.innerHTML += `<option value="${i}">${e.title||("Event "+(i+1))}</option>`;
+      });
+      eventSel.value = dlgEvent;
+      // Beat
+      let beatSel = document.getElementById('beatPicker');
+      beatSel.innerHTML = "<option value=''>None</option>";
+      beats.forEach((b,i) => {
+        beatSel.innerHTML += `<option value="${i}">${b.title||("Beat "+(i+1))}</option>`;
+      });
+      beatSel.value = dlgBeat;
+      // Status
+      let statusSel = document.getElementById('statusPicker');
+      statusSel.value = dlgStatus;
+    }
+
+    // --- Character selection & display ---
+    function addCharacter() {
+      let picker = document.getElementById('charPicker');
+      let name = picker.value;
+      if (name && !dlgChars.includes(name)) {
+        dlgChars.push(name);
+        renderChars();
+        picker.value = "";
+      }
+    }
+    function removeCharacter(name) {
+      dlgChars = dlgChars.filter(c => c !== name);
+      // Remove any lines by that character
+      dlgLines = dlgLines.filter(l => l.speaker !== name);
+      renderChars();
+      renderLines();
+    }
+    function renderChars() {
+      let out = "";
+      dlgChars.forEach(c => {
+        out += `<span class="tag">${c} <button onclick="removeCharacter('${c}')">×</button></span>`;
+      });
+      document.getElementById('charList').innerHTML = out;
+      document.getElementById('add-char-btn');
+      populatePickers();
+      renderRelGrid();
+      renderPairCounts();
+      renderLines();
+    }
+
+    // --- Relationship display for all present pairs ---
+    function renderRelGrid() {
+      let el = document.getElementById('relGrid');
+      if (dlgChars.length < 2) {
+        el.innerHTML = "<div class='rel-display'>Add at least 2 characters.</div>";
+        return;
+      }
+      let html = "";
+      for (let i = 0; i < dlgChars.length; ++i) {
+        for (let j = i+1; j < dlgChars.length; ++j) {
+          let a = dlgChars[i], b = dlgChars[j];
+          let relA = relationships[a]?.[b];
+          let relB = relationships[b]?.[a];
+          html += `<div class="rel-display">
+            <b>${a} → ${b}:</b> ${relA ? `
+              <span>Type: <b>${relA.type||"?"}</b> | 
+                Strength: ${relA.strength||5} | Trust: ${relA.trust||5} | Influence: ${relA.influence||5}
+              </span>
+              ${relA.note ? `<br>Notes: <i>${relA.note}</i>` : ''}
+            ` : "No direct relationship"}
+            <br>
+            <b>${b} → ${a}:</b> ${relB ? `
+              <span>Type: <b>${relB.type||"?"}</b> | 
+                Strength: ${relB.strength||5} | Trust: ${relB.trust||5} | Influence: ${relB.influence||5}
+              </span>
+              ${relB.note ? `<br>Notes: <i>${relB.note}</i>` : ''}
+            ` : "No direct relationship"}
+          </div>`;
+        }
+      }
+      el.innerHTML = html;
+    }
+
+    // --- Interaction Counter ---
+    function renderPairCounts() {
+      let el = document.getElementById('pairCounts');
+      if (dlgChars.length < 2) { el.innerHTML = ""; return; }
+      let html = "<div style='margin:8px 0 3px 0;'>";
+      for (let i = 0; i < dlgChars.length; ++i) {
+        for (let j = i+1; j < dlgChars.length; ++j) {
+          let a = dlgChars[i], b = dlgChars[j];
+          let count = dialogueList.filter(d => d.characters.includes(a) && d.characters.includes(b)).length;
+          html += `<span class="interaction-count"><b>${a}</b> ↔ <b>${b}</b>: ${count} interaction${count!=1?'s':''}</span>`;
+        }
+      }
+      html += "</div>";
+      el.innerHTML = html;
+    }
+
+    // --- Tag system ---
+    function addTag() {
+      let input = document.getElementById('tagInput');
+      let tag = input.value.trim();
+      if (tag && !dlgTags.includes(tag)) {
+        dlgTags.push(tag);
+        renderTags();
+      }
+      input.value = "";
+    }
+    function removeTag(tag) {
+      dlgTags = dlgTags.filter(t => t !== tag);
+      renderTags();
+    }
+    function renderTags() {
+      let out = "";
+      dlgTags.forEach(tag => {
+        out += `<span class="tag">${tag} <button onclick="removeTag('${tag}')">×</button></span>`;
+      });
+      document.getElementById('tagList').innerHTML = out;
+    }
+
+    // --- Dialogue lines ---
+    function addLine() {
+      if (dlgChars.length < 2) {
+        alert("Add at least 2 characters before writing dialogue!");
+        return;
+      }
+      dlgLines.push({ speaker: dlgChars[0], text: "", tone: "", notes: "" });
+      renderLines();
+    }
+    function removeLine(idx) {
+      dlgLines.splice(idx, 1);
+      renderLines();
+    }
+    function updateLine(idx, field, value) {
+      dlgLines[idx][field] = value;
+    }
+    function renderLines() {
+      let out = "";
+      dlgLines.forEach((line, i) => {
+        out += `<div class="line-block">
+          <select onchange="updateLine(${i},'speaker',this.value)">
+            ${dlgChars.map(c=>`<option${line.speaker===c?' selected':''}>${c}</option>`).join("")}
+          </select>
+          <textarea rows="2" placeholder="Dialogue..." style="min-width:220px;" onchange="updateLine(${i},'text',this.value)">${line.text||""}</textarea>
+          <input type="text" placeholder="Tone" style="width:100px;" value="${line.tone||""}" onchange="updateLine(${i},'tone',this.value)">
+          <input type="text" placeholder="Notes" style="width:140px;" value="${line.notes||""}" onchange="updateLine(${i},'notes',this.value)">
+          <button class="del-btn" onclick="removeLine(${i})" title="Delete line">🗑️</button>
+        </div>`;
+      });
+      document.getElementById('lineList').innerHTML = out;
+    }
+
+    // --- Contextual Info ---
+    function renderContextInfo() {
+      let info = [];
+      let s = dlgScene ? scenes[dlgScene] : null;
+      let e = dlgEvent ? events[dlgEvent] : null;
+      let b = dlgBeat ? beats[dlgBeat] : null;
+      if (s) info.push(`<b>Scene:</b> ${s.title||""} <i>${s.desc||""}</i>`);
+      if (e) info.push(`<b>Event:</b> ${e.title||""} <i>${e.desc||""}</i>`);
+      if (b) info.push(`<b>Beat:</b> ${b.title||""} <i>${b.description||""}</i>`);
+      document.getElementById('contextInfo').innerHTML = info.join("<br>");
+    }
+
+    // --- Save Dialogue ---
+    function saveDialogue() {
+      if (dlgChars.length < 2) { alert("Must have at least 2 characters!"); return; }
+      if (!dlgLines.length) { alert("Add at least one line."); return; }
+      let obj = {
+        characters: dlgChars.slice(),
+        tags: dlgTags.slice(),
+        scene: dlgScene,
+        event: dlgEvent,
+        beat: dlgBeat,
+        status: dlgStatus,
+        lines: JSON.parse(JSON.stringify(dlgLines)),
+        created: Date.now()
+      };
+      if (editIdx >= 0) dialogueList[editIdx] = obj;
+      else dialogueList.push(obj);
+      localStorage.setItem("dialogues", JSON.stringify(dialogueList));
+      alert("Dialogue saved!");
+      resetForm();
+      renderDirectory();
+    }
+
+    function resetForm() {
+      dlgChars = [];
+      dlgTags = [];
+      dlgLines = [];
+      dlgScene = "";
+      dlgEvent = "";
+      dlgBeat = "";
+      dlgStatus = "Draft";
+      editIdx = -1;
+      renderChars();
+      renderTags();
+      renderLines();
+      populatePickers();
+      renderContextInfo();
+    }
+
+    // --- Directory ---
+    function renderDirectory() {
+      let search = document.getElementById('searchBox').value.trim().toLowerCase();
+      let statusF = document.getElementById('statusFilter').value;
+      let tagF = document.getElementById('tagFilter').value.trim().toLowerCase();
+      let out = `<tr>
+        <th>#</th>
+        <th>Chars</th>
+        <th>Status</th>
+        <th>Scene/Event/Beat</th>
+        <th>Tags</th>
+        <th>Lines</th>
+        <th></th>
+      </tr>`;
+      dialogueList.forEach((d, i) => {
+        let textBlob = d.lines.map(l => l.text).join(" ").toLowerCase();
+        let chars = d.characters.join(", ");
+        let tagBlob = (d.tags||[]).join(", ");
+        let meta = [
+          d.scene!=="" && scenes[d.scene] ? "S:"+scenes[d.scene].title : "",
+          d.event!=="" && events[d.event] ? "E:"+events[d.event].title : "",
+          d.beat!=="" && beats[d.beat] ? "B:"+beats[d.beat].title : ""
+        ].filter(Boolean).join(" | ");
+        let tagsShow = (d.tags||[]).map(t=>`<span class="filter-tag">${t}</span>`).join(" ");
+        if (
+          (search && !chars.toLowerCase().includes(search) && !textBlob.includes(search)) ||
+          (statusF && d.status !== statusF) ||
+          (tagF && !tagBlob.includes(tagF))
+        ) return;
+        out += `<tr>
+          <td>${i+1}</td>
+          <td>${chars}</td>
+          <td>${d.status||""}</td>
+          <td>${meta||"-"}</td>
+          <td>${tagsShow||"-"}</td>
+          <td style="max-width:300px;">${d.lines.slice(0,2).map(l=>`<b>${l.speaker}:</b> ${l.text}`).join("<br>")}${d.lines.length>2?"<br>...":""}</td>
+          <td>
+            <button class="small-btn" onclick="editDialogue(${i})">Edit</button>
+            <button class="small-btn" onclick="deleteDialogue(${i})">Delete</button>
+          </td>
+        </tr>`;
+      });
+      document.getElementById('dialogueDirectory').innerHTML = out;
+    }
+
+    function editDialogue(idx) {
+      let d = dialogueList[idx];
+      dlgChars = d.characters.slice();
+      dlgTags = d.tags.slice();
+      dlgLines = JSON.parse(JSON.stringify(d.lines));
+      dlgScene = d.scene;
+      dlgEvent = d.event;
+      dlgBeat = d.beat;
+      dlgStatus = d.status||"Draft";
+      editIdx = idx;
+      renderChars();
+      renderTags();
+      renderLines();
+      populatePickers();
+      renderContextInfo();
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+    function deleteDialogue(idx) {
+      if (!confirm("Delete this dialogue?")) return;
+      dialogueList.splice(idx,1);
+      localStorage.setItem("dialogues", JSON.stringify(dialogueList));
+      renderDirectory();
+    }
+
+    // --- Events & Setup ---
+    document.getElementById('scenePicker').onchange = function() { dlgScene = this.value; renderContextInfo(); };
+    document.getElementById('eventPicker').onchange = function() { dlgEvent = this.value; renderContextInfo(); };
+    document.getElementById('beatPicker').onchange = function() { dlgBeat = this.value; renderContextInfo(); };
+    document.getElementById('statusPicker').onchange = function() { dlgStatus = this.value; };
+    document.addEventListener("DOMContentLoaded", () => {
+      resetForm();
+      renderDirectory();
+    });
+  </script>
+</body>
+</html>

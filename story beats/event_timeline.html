@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Event Timeline</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #e8ecfa;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 95%;
+      margin: 20px auto;
+      background: rgba(24,39,70,0.97);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a77;
+      padding: 20px;
+      border: 1.5px solid #3b82f644;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 16px;
+      color: #fff;
+    }
+    .dashboard-btn, .manager-btn, .toggle-btn {
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 8px 20px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      transition: background .15s, color .14s;
+      box-shadow: 0 2px 9px #10399a24;
+      margin-right: 12px;
+    }
+    .dashboard-btn:hover, .manager-btn:hover, .toggle-btn:hover {
+      background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%);
+      color: #e0f4ff;
+    }
+
+    /* --- Linear Timeline --- */
+    .svg-holder {
+      margin: 12px 0;
+      width:100%;
+      overflow-x:auto;
+      background:rgba(20,36,80,0.15);
+      border-radius:14px;
+      padding: 15px 0;
+    }
+    .timeline-axis {
+      stroke:#b4d8fd;
+      stroke-width:2px;
+    }
+    .event-dot { cursor:pointer; stroke-width:3px; }
+    .event-dot:hover { filter: drop-shadow(0 3px 9px #70d8f9cc); }
+    .event-title { fill:#fff; font-size:15px; font-weight:600; }
+    .timeline-label { fill:#9cd6ff; font-size:15px; }
+    .event-popup { pointer-events:none; }
+
+    /* --- Horizontal Board View --- */
+    #layeredView {
+      display: none; /* hidden by default */
+      overflow-x: auto;
+      overflow-y: hidden;
+      white-space: nowrap;
+      padding-bottom: 20px;
+    }
+    .beat-column {
+      background: rgba(28, 54, 104, 0.9);
+      border-radius: 12px;
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: top;
+      margin-right: 16px;
+      width: 280px;
+      min-height: 500px;
+      box-shadow: 0 2px 12px #0003;
+    }
+    .beat-header {
+      background: #1b3b74;
+      border-radius: 12px 12px 0 0;
+      padding: 10px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 1.1em;
+      color: #aee5ff;
+    }
+    .event-list {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+    }
+    .event-card {
+      background: #234b8c;
+      border-radius: 8px;
+      padding: 8px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px #0004;
+      cursor: grab;
+    }
+    .event-card:active {
+      cursor: grabbing;
+    }
+    .event-title-tile {
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #fff;
+    }
+    .scene-list {
+      padding-left: 10px;
+    }
+    .scene-tile {
+      background: #2f66bb;
+      border-radius: 6px;
+      padding: 4px 6px;
+      margin-bottom: 4px;
+      font-size: 0.9em;
+      cursor: grab;
+    }
+    .scene-tile:active {
+      cursor: grabbing;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <button onclick="window.location.href='project_core.html'" class="dashboard-btn">← Return to Hub</button>
+      <button onclick="window.location.href='event_manager.html?id='+encodeURIComponent(projectId)" class="manager-btn">Event Manager</button>
+      <button id="toggleModeBtn" class="toggle-btn">Switch to Tile View</button>
+    </div>
+    <h1 id="projTitle">Event Timeline</h1>
+
+    <!-- Linear Timeline -->
+    <div id="timelineView">
+      <div class="svg-holder">
+        <svg id="timelineSVG" class="timeline-svg" width="1080" height="400"></svg>
+      </div>
+    </div>
+
+    <!-- Horizontal Board View -->
+    <div id="layeredView"></div>
+  </div>
+<script>
+  getProjectId().then(projectId => {
+    console.log("Current projectId:", projectId);
+    if (!projectId) {
+      alert("No project selected!");
+      window.location.href = "dashboard.html";
+    }
+  });
+</script>
+<script>
+  function getQueryParam(name) {
+    let params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+  function getProjects() {
+    return JSON.parse(localStorage.getItem("plotProjects") || "[]");
+  }
+
+  let projectId = getQueryParam("id"),
+      project = null,
+      events = [],
+      scenes = [],
+      beats = [],
+      locations = [],
+      characters = [];
+
+  function loadProject() {
+    if (!projectId) {
+      alert("No project ID.");
+      window.location.href = "dashboard.html";
+      return;
+    }
+    let arr = getProjects();
+    project = arr.find(p => p.id === projectId);
+    if (!project) {
+      alert("Project not found.");
+      window.location.href = "dashboard.html";
+      return;
+    }
+    events = project.events || [];
+    scenes = project.scenes || [];
+    beats = project.beats || [];
+    locations = project.locations || [];
+    characters = project.characters || [];
+
+    document.getElementById('projTitle').textContent =
+      "Event Timeline: " + (project.meta?.storyTitle || "Untitled");
+
+    drawTimeline();
+  }
+
+  /* --- Linear Timeline Drawing --- */
+  function drawTimeline() {
+    let svg = document.getElementById("timelineSVG");
+    svg.innerHTML = "";
+
+    let n = events.length;
+    let w = Math.max(800, n * 110),
+        h = 420,
+        margin = 80;
+
+    svg.setAttribute("width", w + 2 * margin);
+    svg.setAttribute("height", h);
+
+    // Axis
+    svg.innerHTML += `<line class="timeline-axis"
+      x1="${margin}" y1="${h-55}"
+      x2="${w+margin}" y2="${h-55}" />`;
+
+    let minY = margin + 20,
+        maxY = h - 55;
+
+    let yByWeight = wgt => maxY - ((wgt-1)/(10-1)) * (maxY-minY);
+
+    for (let i=0; i<n; i++) {
+      let x = margin + i * (w/(Math.max(1, n-1)));
+      let e = events[i];
+      let y = yByWeight(e.weight || 5);
+      let r = 16 + (e.weight || 5);
+
+      // Connector line from axis to node
+      svg.innerHTML += `<line x1="${x}" y1="${y}" x2="${x}" y2="${h-55}"
+        stroke="#2858afcc" stroke-width="2"/>`;
+
+      let color = getColor(e.weight || 5);
+      if (e.img) {
+        let patternId = "eventimg_"+i;
+        svg.innerHTML += `
+          <defs>
+            <pattern id="${patternId}" patternUnits="objectBoundingBox" width="1" height="1">
+              <image href="${e.img}" width="${2*r}" height="${2*r}" preserveAspectRatio="xMidYMid slice"/>
+            </pattern>
+          </defs>
+          <circle class="event-dot" data-i="${i}"
+            cx="${x}" cy="${y}" r="${r}"
+            fill="url(#${patternId})" stroke="#173d8e"
+            onclick="window.location.href='event_manager.html?id=${encodeURIComponent(projectId)}&event=${i}'" />
+        `;
+      } else {
+        svg.innerHTML += `<circle class="event-dot" data-i="${i}"
+          cx="${x}" cy="${y}" r="${r}" fill="${color}" stroke="#173d8e"
+          onclick="window.location.href='event_manager.html?id=${encodeURIComponent(projectId)}&event=${i}'" />`;
+      }
+
+      svg.innerHTML += `<text x="${x}" y="${y - r - 10}" class="event-title"
+        text-anchor="middle">${(e.title||"").slice(0,20)}</text>`;
+    }
+  }
+
+  function getColor(w) {
+    if (w >= 10) return "#e11d48";
+    if (w >= 8) return "#facc15";
+    if (w >= 6) return "#4ade80";
+    if (w >= 4) return "#60a5fa";
+    if (w >= 2) return "#6366f1";
+    return "#64748b";
+  }
+
+  /* --- Mode Toggle --- */
+  document.getElementById("toggleModeBtn").addEventListener("click", () => {
+    let timelineView = document.getElementById("timelineView");
+    let layeredView = document.getElementById("layeredView");
+    if (timelineView.style.display !== "none") {
+      timelineView.style.display = "none";
+      layeredView.style.display = "flex";
+      document.getElementById("toggleModeBtn").textContent = "Switch to Linear View";
+      renderLayeredView();
+    } else {
+      layeredView.style.display = "none";
+      timelineView.style.display = "block";
+      document.getElementById("toggleModeBtn").textContent = "Switch to Tile View";
+      drawTimeline();
+    }
+  });
+
+  loadProject();
+</script>
+<script>
+  /* --- Render Layered (Horizontal Board) View --- */
+  function renderLayeredView() {
+    const container = document.getElementById("layeredView");
+    container.innerHTML = "";
+
+    // Group events by beat
+    let beatMap = {};
+    beats.forEach((b, idx) => {
+      beatMap[idx] = [];
+    });
+    events.forEach(ev => {
+      let beatIndex = -1;
+      if (/^beat\d+$/.test(ev.scene)) {
+        beatIndex = parseInt(ev.scene.replace("beat",""));
+      }
+      if (beatIndex >= 0 && beatMap[beatIndex]) {
+        beatMap[beatIndex].push(ev);
+      }
+    });
+
+    // Render beats as columns
+    beats.forEach((beat, beatIndex) => {
+      const beatCol = document.createElement("div");
+      beatCol.className = "beat-column";
+      beatCol.dataset.beatIndex = beatIndex;
+
+      const beatHeader = document.createElement("div");
+      beatHeader.className = "beat-header";
+      beatHeader.textContent = beat.title || `Beat ${beatIndex+1}`;
+      beatCol.appendChild(beatHeader);
+
+      const eventList = document.createElement("div");
+      eventList.className = "event-list";
+      eventList.dataset.beatIndex = beatIndex;
+      eventList.addEventListener("dragover", e => e.preventDefault());
+      eventList.addEventListener("drop", handleEventDrop);
+
+      (beatMap[beatIndex] || []).forEach(ev => {
+        const eventCard = document.createElement("div");
+        eventCard.className = "event-card";
+        eventCard.draggable = true;
+        eventCard.dataset.eventId = events.indexOf(ev);
+        eventCard.dataset.beatIndex = beatIndex;
+        eventCard.addEventListener("dragstart", handleDragStart);
+
+        // Click to edit Event
+        eventCard.addEventListener("click", () => {
+          window.location.href = `event_manager.html?id=${encodeURIComponent(projectId)}&event=${events.indexOf(ev)}`;
+        });
+
+        const eventTitle = document.createElement("div");
+        eventTitle.className = "event-title-tile";
+        eventTitle.textContent = ev.title || "Untitled Event";
+        eventCard.appendChild(eventTitle);
+
+        const sceneList = document.createElement("div");
+        sceneList.className = "scene-list";
+        sceneList.dataset.eventId = events.indexOf(ev);
+        sceneList.addEventListener("dragover", e => e.preventDefault());
+        sceneList.addEventListener("drop", handleSceneDrop);
+
+        // Render scenes linked to this event
+        (ev.scenes || []).forEach(sceneIndex => {
+          const sc = scenes[sceneIndex];
+          if (!sc) return;
+          const sceneTile = document.createElement("div");
+          sceneTile.className = "scene-tile";
+          sceneTile.draggable = true;
+          sceneTile.dataset.sceneId = sceneIndex;
+          sceneTile.dataset.eventId = events.indexOf(ev);
+          sceneTile.textContent = sc.title || `Scene ${sceneIndex+1}`;
+          sceneTile.addEventListener("dragstart", handleDragStart);
+
+          // Click to edit Scene
+          sceneTile.addEventListener("click", e => {
+            e.stopPropagation();
+            window.location.href = `scene_manager.html?id=${encodeURIComponent(projectId)}&scene=${sceneIndex}`;
+          });
+
+          sceneList.appendChild(sceneTile);
+        });
+
+        eventCard.appendChild(sceneList);
+        eventList.appendChild(eventCard);
+      });
+
+      beatCol.appendChild(eventList);
+      container.appendChild(beatCol);
+    });
+  }
+
+  /* --- Drag/Drop Handlers --- */
+  let draggedItem = null;
+  let draggedType = null; // "event" or "scene"
+
+  function handleDragStart(e) {
+    draggedItem = e.target;
+    if (draggedItem.classList.contains("event-card")) {
+      draggedType = "event";
+    } else if (draggedItem.classList.contains("scene-tile")) {
+      draggedType = "scene";
+    }
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleEventDrop(e) {
+    if (draggedType !== "event") return;
+    const targetBeatIndex = parseInt(e.currentTarget.dataset.beatIndex);
+    const sourceBeatIndex = parseInt(draggedItem.dataset.beatIndex);
+    if (targetBeatIndex !== sourceBeatIndex) return; // block cross-beat move
+
+    e.currentTarget.appendChild(draggedItem);
+  }
+
+  function handleSceneDrop(e) {
+    if (draggedType !== "scene") return;
+    const targetEventId = parseInt(e.currentTarget.dataset.eventId);
+    const sourceEventId = parseInt(draggedItem.dataset.eventId);
+    if (targetEventId !== sourceEventId) return; // block cross-event move
+
+    e.currentTarget.appendChild(draggedItem);
+  }
+</script>
+
+</body>
+</html>
