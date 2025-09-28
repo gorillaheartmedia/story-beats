@@ -293,6 +293,7 @@ function setArchive(arr) {
 }
 
 // --------- Rendering Logic -----------
+
 function renderGrid() {
   archive = getArchive();
   const grid = document.getElementById("archiveGrid");
@@ -340,6 +341,7 @@ function renderGrid() {
     grid.appendChild(div);
   });
 }
+
 function togglePinEntry(idx) {
   archive = getArchive();
   archive[idx].pinned = !archive[idx].pinned;
@@ -353,6 +355,7 @@ function deleteEntry(idx) {
   setArchive(archive);
   renderGrid();
 }
+
 function previewEntry(idx) {
   previewIdx = idx;
   archive = getArchive();
@@ -371,7 +374,7 @@ function previewEntry(idx) {
     mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">${entry.url}</a>`;
   else if (entry.type === "document" && entry.url)
     mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">Open Document</a>`;
-  // Render meta
+
   const meta = document.getElementById("previewMeta");
   meta.innerHTML = `
     <div class="label">${entry.label || "(Untitled)"}</div>
@@ -381,9 +384,9 @@ function previewEntry(idx) {
     <div class="desc" style="margin-top:8px;">${entry.notes ? entry.notes.replace(/\n/g, "<br>") : ""}</div>
     <div style="margin-top:10px;color:#ffe285;">${entry.pinned ? "⭐ Pinned" : ""}</div>
   `;
-  // Set pin button
   document.getElementById("pinBtn").className = "pin-btn" + (entry.pinned ? " pinned" : "");
 }
+
 function closePreviewModal() {
   document.getElementById("previewModalBg").style.display = "none";
 }
@@ -405,11 +408,24 @@ function togglePin(e) {
   togglePinEntry(previewIdx);
   previewEntry(previewIdx);
 }
+
+// ✅ Updated to support Base64 file downloads
 function downloadPreview() {
   if (previewIdx === null) return;
   const entry = archive[previewIdx];
-  if (entry.url) window.open(entry.url, '_blank');
+
+  if (entry.fileData) {
+    const a = document.createElement("a");
+    a.href = entry.fileData;
+    a.download = entry.fileName || "download";
+    a.click();
+  } else if (entry.url) {
+    window.open(entry.url, "_blank");
+  } else {
+    alert("No file or URL available.");
+  }
 }
+
 function copyPreview() {
   if (previewIdx === null) return;
   const entry = archive[previewIdx];
@@ -425,7 +441,7 @@ function editPreview() {
 function deletePreview() {
   if (previewIdx === null) return;
   if (!confirm("Delete this entry?")) return;
-  archive = getArchive(); // Refresh in case something changed
+  archive = getArchive(); 
   archive.splice(previewIdx, 1);
   setArchive(archive);
   closePreviewModal();
@@ -435,7 +451,6 @@ function deletePreview() {
 
 // ---------- Modal Logic --------------
 
-// Warn if current projectId does not match any real project
 function safeOpenResearchModal(idx) {
   const curProjectId = localStorage.getItem("currentProjectId");
   const allProjects = getProjects();
@@ -461,22 +476,18 @@ function proceedAnyway() {
   window._intentToEditIdx = null;
 }
 
-// Add/Edit Research Modal + Delete logic
 function openResearchModal(idx) {
   editingIdx = idx;
   let entry = idx != null ? getArchive()[idx] : {};
   document.getElementById("modalLabel").value = entry.label || "";
   document.getElementById("modalType").value = entry.type || "note";
   document.getElementById("modalDesc").value = entry.notes || "";
-  // tags
   modalTags = entry.tags ? [...entry.tags] : [];
   renderModalTags();
-  // url/file
   document.getElementById("modalURL").value = entry.url || "";
   document.getElementById("modalFile").value = "";
   toggleTypeFields();
 
-  // Delete button logic
   const delBtn = document.getElementById("deleteResearchBtn");
   if (delBtn) {
     delBtn.style.display = (editingIdx != null) ? "" : "none";
@@ -498,6 +509,8 @@ function openResearchModal(idx) {
 function closeResearchModal() {
   document.getElementById("researchModalBg").style.display = "none";
 }
+
+// ✅ Updated saveResearch with Base64 file handling
 function saveResearch() {
   let label = document.getElementById("modalLabel").value.trim();
   let type = document.getElementById("modalType").value;
@@ -505,11 +518,37 @@ function saveResearch() {
   let url = document.getElementById("modalURL").value.trim();
   let tags = modalTags.slice();
 
+  const fileInput = document.getElementById("modalFile");
+  const file = fileInput.files[0];
+
   let entry = {
-    label, type, notes, url, tags,
-    date: editingIdx != null && getArchive()[editingIdx].date ? getArchive()[editingIdx].date : (new Date()).toISOString(),
-    pinned: editingIdx != null && getArchive()[editingIdx].pinned
+    label,
+    type,
+    notes,
+    url,
+    tags,
+    date:
+      editingIdx != null && getArchive()[editingIdx].date
+        ? getArchive()[editingIdx].date
+        : new Date().toISOString(),
+    pinned: editingIdx != null && getArchive()[editingIdx].pinned,
+    fileName: file ? file.name : null,
+    fileData: null
   };
+
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      entry.fileData = e.target.result; 
+      finalizeSave(entry);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    finalizeSave(entry);
+  }
+}
+
+function finalizeSave(entry) {
   let arr = getArchive();
   if (editingIdx != null) arr[editingIdx] = entry;
   else arr.unshift(entry);
@@ -518,6 +557,7 @@ function saveResearch() {
   renderGrid();
   editingIdx = null;
 }
+
 let modalTags = [];
 function renderModalTags() {
   const tagList = document.getElementById("modalTagList");
@@ -550,7 +590,6 @@ function toggleTypeFields() {
 
 // ------------ Modal Utility ------------
 
-// Failsafe: add a "Reload" and "Switch Project" button to the banner
 function showProjectBanner(title) {
   const banner = document.getElementById('projectBanner');
   banner.innerHTML =
@@ -569,7 +608,6 @@ window.addEventListener('DOMContentLoaded', function() {
   const currentId = localStorage.getItem("currentProjectId");
   const allProjects = getProjects();
 
-  // If missing or invalid, force picker
   if (!currentTitle || !currentId || !allProjects.find(p => p.id === currentId)) {
     showProjectPicker();
   } else {
@@ -578,5 +616,7 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+
 </body>
 </html>
+
