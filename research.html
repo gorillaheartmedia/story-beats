@@ -227,6 +227,46 @@
     </div>
   </div>
 <script>
+// -------- IndexedDB Setup --------
+const DB_NAME = "ResearchArchiveDB";
+const DB_STORE = "files";
+const DB_VERSION = 1;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function (e) {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        db.createObjectStore(DB_STORE, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function saveFileToDB(file) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const id = Date.now() + "_" + file.name;
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).put({ id, file });
+    tx.oncomplete = () => resolve(id);
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+async function getFileFromDB(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readonly");
+    const req = tx.objectStore(DB_STORE).get(id);
+    req.onsuccess = () => resolve(req.result ? req.result.file : null);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
 // -------- Project Picker Integration --------
 
 function getProjects() {
@@ -283,8 +323,7 @@ let filterPin = false;
 function getArchive() {
   const pid = localStorage.getItem("currentProjectId");
   if (!pid) return [];
-  let data = JSON.parse(localStorage.getItem("researchArchive_" + pid) || "[]");
-  return data;
+  return JSON.parse(localStorage.getItem("researchArchive_" + pid) || "[]");
 }
 function setArchive(arr) {
   const pid = localStorage.getItem("currentProjectId");
@@ -318,12 +357,41 @@ function renderGrid() {
   filtered.forEach((entry, i) => {
     let div = document.createElement("div");
     div.className = "card";
-    if (entry.type === "image" && entry.url)
-      div.innerHTML += `<img class="thumb" src="${entry.url}" alt="img">`;
-    else if (entry.type === "video" && entry.url)
-      div.innerHTML += `<video class="thumb" src="${entry.url}" controls></video>`;
-    else if (entry.type === "audio" && entry.url)
-      div.innerHTML += `<audio class="thumb" src="${entry.url}" controls></audio>`;
+
+    if (entry.type === "image" && (entry.url || entry.fileId)) {
+      if (entry.fileId) {
+        getFileFromDB(entry.fileId).then(file => {
+          if (file) {
+            const url = URL.createObjectURL(file);
+            div.innerHTML += `<img class="thumb" src="${url}" alt="img">`;
+          }
+        });
+      } else {
+        div.innerHTML += `<img class="thumb" src="${entry.url}" alt="img">`;
+      }
+    } else if (entry.type === "video" && (entry.url || entry.fileId)) {
+      if (entry.fileId) {
+        getFileFromDB(entry.fileId).then(file => {
+          if (file) {
+            const url = URL.createObjectURL(file);
+            div.innerHTML += `<video class="thumb" src="${url}" controls></video>`;
+          }
+        });
+      } else {
+        div.innerHTML += `<video class="thumb" src="${entry.url}" controls></video>`;
+      }
+    } else if (entry.type === "audio" && (entry.url || entry.fileId)) {
+      if (entry.fileId) {
+        getFileFromDB(entry.fileId).then(file => {
+          if (file) {
+            const url = URL.createObjectURL(file);
+            div.innerHTML += `<audio class="thumb" src="${url}" controls></audio>`;
+          }
+        });
+      } else {
+        div.innerHTML += `<audio class="thumb" src="${entry.url}" controls></audio>`;
+      }
+    }
 
     div.innerHTML += `
       <span class="type-label">${entry.type ? entry.type[0].toUpperCase() + entry.type.slice(1) : ""}</span>
@@ -361,19 +429,47 @@ function previewEntry(idx) {
   archive = getArchive();
   const entry = archive[idx];
   document.getElementById("previewModalBg").style.display = "flex";
-  // Render media
   const mediaRow = document.getElementById("previewMediaRow");
   mediaRow.innerHTML = "";
-  if (entry.type === "image" && entry.url)
-    mediaRow.innerHTML += `<img src="${entry.url}" alt="img" style="max-width:100%;">`;
-  else if (entry.type === "video" && entry.url)
-    mediaRow.innerHTML += `<video src="${entry.url}" controls style="max-width:100%"></video>`;
-  else if (entry.type === "audio" && entry.url)
-    mediaRow.innerHTML += `<audio src="${entry.url}" controls style="width:100%"></audio>`;
-  else if (entry.type === "link" && entry.url)
+
+  if (entry.type === "image" && (entry.url || entry.fileId)) {
+    if (entry.fileId) {
+      getFileFromDB(entry.fileId).then(file => {
+        if (file) mediaRow.innerHTML += `<img src="${URL.createObjectURL(file)}" style="max-width:100%;">`;
+      });
+    } else {
+      mediaRow.innerHTML += `<img src="${entry.url}" style="max-width:100%;">`;
+    }
+  } else if (entry.type === "video" && (entry.url || entry.fileId)) {
+    if (entry.fileId) {
+      getFileFromDB(entry.fileId).then(file => {
+        if (file) mediaRow.innerHTML += `<video src="${URL.createObjectURL(file)}" controls style="max-width:100%"></video>`;
+      });
+    } else {
+      mediaRow.innerHTML += `<video src="${entry.url}" controls style="max-width:100%"></video>`;
+    }
+  } else if (entry.type === "audio" && (entry.url || entry.fileId)) {
+    if (entry.fileId) {
+      getFileFromDB(entry.fileId).then(file => {
+        if (file) mediaRow.innerHTML += `<audio src="${URL.createObjectURL(file)}" controls style="width:100%"></audio>`;
+      });
+    } else {
+      mediaRow.innerHTML += `<audio src="${entry.url}" controls style="width:100%"></audio>`;
+    }
+  } else if (entry.type === "document") {
+    if (entry.fileId) {
+      getFileFromDB(entry.fileId).then(file => {
+        if (file) {
+          const url = URL.createObjectURL(file);
+          mediaRow.innerHTML += `<a href="${url}" download="${entry.fileName || 'download'}">Download ${entry.fileName || 'file'}</a>`;
+        }
+      });
+    } else if (entry.url) {
+      mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">Open Document</a>`;
+    }
+  } else if (entry.type === "link" && entry.url) {
     mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">${entry.url}</a>`;
-  else if (entry.type === "document" && entry.url)
-    mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">Open Document</a>`;
+  }
 
   const meta = document.getElementById("previewMeta");
   meta.innerHTML = `
@@ -409,16 +505,20 @@ function togglePin(e) {
   previewEntry(previewIdx);
 }
 
-// ✅ Updated to support Base64 file downloads
-function downloadPreview() {
+// ✅ Updated for IndexedDB
+async function downloadPreview() {
   if (previewIdx === null) return;
   const entry = archive[previewIdx];
 
-  if (entry.fileData) {
-    const a = document.createElement("a");
-    a.href = entry.fileData;
-    a.download = entry.fileName || "download";
-    a.click();
+  if (entry.fileId) {
+    const file = await getFileFromDB(entry.fileId);
+    if (file) {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = entry.fileName || "download";
+      a.click();
+    }
   } else if (entry.url) {
     window.open(entry.url, "_blank");
   } else {
@@ -510,8 +610,8 @@ function closeResearchModal() {
   document.getElementById("researchModalBg").style.display = "none";
 }
 
-// ✅ Updated saveResearch with Base64 file handling
-function saveResearch() {
+// ✅ Updated saveResearch for IndexedDB
+async function saveResearch() {
   let label = document.getElementById("modalLabel").value.trim();
   let type = document.getElementById("modalType").value;
   let notes = document.getElementById("modalDesc").value.trim();
@@ -533,19 +633,14 @@ function saveResearch() {
         : new Date().toISOString(),
     pinned: editingIdx != null && getArchive()[editingIdx].pinned,
     fileName: file ? file.name : null,
-    fileData: null
+    fileId: null
   };
 
   if (file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      entry.fileData = e.target.result; 
-      finalizeSave(entry);
-    };
-    reader.readAsDataURL(file);
-  } else {
-    finalizeSave(entry);
+    entry.fileId = await saveFileToDB(file);
   }
+
+  finalizeSave(entry);
 }
 
 function finalizeSave(entry) {
@@ -584,8 +679,11 @@ function removeModalTag(idx) {
 }
 function toggleTypeFields() {
   let type = document.getElementById("modalType").value;
-  document.getElementById("fileField").style.display = (type === "image" || type === "video" || type === "audio" || type === "document") ? "block" : "none";
-  document.getElementById("urlField").style.display = (type !== "note") ? "block" : "none";
+  document.getElementById("fileField").style.display =
+    (type === "image" || type === "video" || type === "audio" || type === "document")
+      ? "block"
+      : "none";
+  document.getElementById("urlField").style.display = (type === "link") ? "block" : "none";
 }
 
 // ------------ Modal Utility ------------
@@ -617,6 +715,8 @@ window.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+
 </body>
 </html>
+
 
