@@ -160,6 +160,385 @@ window.projectStoreSetProjects = setProjects;
 window.getProjects = getProjects;
 window.setProjects = setProjects;
 
+// --- Shared audio library and player ---
+const STORY_AUDIO_KEY = "storyAudioLibrary";
+let storyAudioState = {
+  tracks: [],
+  currentIndex: -1,
+  urls: new Map(),
+  ready: false
+};
+
+function storyAudioFormatTime(seconds) {
+  if (!Number.isFinite(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+  return `${mins}:${secs}`;
+}
+
+function storyAudioTrackLabel(track, index) {
+  return track && track.name ? track.name : `Track ${index + 1}`;
+}
+
+async function storyAudioLoadLibrary() {
+  let tracks = [];
+  try {
+    tracks = await idbGet(STORY_AUDIO_KEY);
+  } catch (e) {
+    console.warn("Audio library read failed", e);
+  }
+  storyAudioState.tracks = Array.isArray(tracks) ? tracks : [];
+  if (storyAudioState.currentIndex >= storyAudioState.tracks.length) {
+    storyAudioState.currentIndex = storyAudioState.tracks.length ? 0 : -1;
+  }
+  if (storyAudioState.currentIndex === -1 && storyAudioState.tracks.length) {
+    storyAudioState.currentIndex = 0;
+  }
+}
+
+async function storyAudioSaveLibrary() {
+  try {
+    await idbSet(STORY_AUDIO_KEY, storyAudioState.tracks);
+  } catch (e) {
+    console.warn("Audio library save failed", e);
+  }
+}
+
+function storyAudioGetUrl(track) {
+  if (!track || !track.blob) return "";
+  if (!storyAudioState.urls.has(track.id)) {
+    storyAudioState.urls.set(track.id, URL.createObjectURL(track.blob));
+  }
+  return storyAudioState.urls.get(track.id);
+}
+
+function storyAudioReleaseTrackUrl(trackId) {
+  const url = storyAudioState.urls.get(trackId);
+  if (url) URL.revokeObjectURL(url);
+  storyAudioState.urls.delete(trackId);
+}
+
+function storyAudioRender() {
+  const shell = document.getElementById("story-audio-shell");
+  if (!shell) return;
+
+  const panel = shell.querySelector(".story-audio-panel");
+  const list = shell.querySelector(".story-audio-list");
+  const title = shell.querySelector(".story-audio-title");
+  const empty = shell.querySelector(".story-audio-empty");
+  const audio = shell.querySelector("audio");
+  const playButton = shell.querySelector("[data-audio-action='play']");
+  const homeButton = shell.querySelector(".story-audio-home");
+  const isOpen = localStorage.getItem("storyAudioPanelOpen") === "1";
+
+  shell.classList.toggle("is-open", isOpen);
+  panel.hidden = !isOpen;
+  homeButton.setAttribute("aria-expanded", String(isOpen));
+
+  list.innerHTML = "";
+  empty.hidden = storyAudioState.tracks.length > 0;
+
+  storyAudioState.tracks.forEach((track, index) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "story-audio-track";
+    row.dataset.index = String(index);
+    row.innerHTML = `
+      <span class="story-audio-track-name"></span>
+      <span class="story-audio-track-size">${track.size ? Math.round(track.size / 1024 / 1024 * 10) / 10 + " MB" : ""}</span>
+    `;
+    row.querySelector(".story-audio-track-name").textContent = storyAudioTrackLabel(track, index);
+    if (index === storyAudioState.currentIndex) row.classList.add("is-active");
+    row.addEventListener("click", () => storyAudioSelect(index, true));
+    list.appendChild(row);
+  });
+
+  const current = storyAudioState.tracks[storyAudioState.currentIndex];
+  title.textContent = current ? storyAudioTrackLabel(current, storyAudioState.currentIndex) : "No audio loaded";
+  if (current && audio.dataset.trackId !== current.id) {
+    audio.src = storyAudioGetUrl(current);
+    audio.dataset.trackId = current.id;
+  }
+  if (!current) {
+    audio.removeAttribute("src");
+    audio.dataset.trackId = "";
+  }
+  playButton.textContent = audio.paused ? "Play" : "Pause";
+}
+
+function storyAudioSelect(index, shouldPlay) {
+  if (index < 0 || index >= storyAudioState.tracks.length) return;
+  storyAudioState.currentIndex = index;
+  const audio = document.querySelector("#story-audio-shell audio");
+  const current = storyAudioState.tracks[index];
+  if (audio && current) {
+    audio.src = storyAudioGetUrl(current);
+    audio.dataset.trackId = current.id;
+    if (shouldPlay) audio.play().catch(() => {});
+  }
+  storyAudioRender();
+}
+
+function storyAudioSkip(delta) {
+  if (!storyAudioState.tracks.length) return;
+  const next = (storyAudioState.currentIndex + delta + storyAudioState.tracks.length) % storyAudioState.tracks.length;
+  storyAudioSelect(next, true);
+}
+
+async function storyAudioAddFiles(files) {
+  const incoming = Array.from(files || []).filter(file => file.type.startsWith("audio/"));
+  if (!incoming.length) return;
+  incoming.forEach(file => {
+    storyAudioState.tracks.push({
+      id: `audio_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      addedAt: new Date().toISOString(),
+      blob: file
+    });
+  });
+  if (storyAudioState.currentIndex === -1) storyAudioState.currentIndex = 0;
+  await storyAudioSaveLibrary();
+  storyAudioRender();
+}
+
+async function storyAudioRemoveCurrent() {
+  const index = storyAudioState.currentIndex;
+  if (index < 0 || index >= storyAudioState.tracks.length) return;
+  const removed = storyAudioState.tracks.splice(index, 1)[0];
+  if (removed) storyAudioReleaseTrackUrl(removed.id);
+  storyAudioState.currentIndex = storyAudioState.tracks.length ? Math.min(index, storyAudioState.tracks.length - 1) : -1;
+  await storyAudioSaveLibrary();
+  storyAudioRender();
+}
+
+function storyAudioInjectStyles() {
+  if (document.getElementById("story-audio-styles")) return;
+  const style = document.createElement("style");
+  style.id = "story-audio-styles";
+  style.textContent = `
+    #story-audio-shell {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 9998;
+      font-family: Inter, Arial, sans-serif;
+      color: #f7fbff;
+    }
+    .story-audio-home {
+      min-width: 88px;
+      height: 44px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      background: linear-gradient(120deg, #10233f, #2475d6);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.32);
+      cursor: pointer;
+    }
+    .story-audio-panel {
+      width: min(340px, calc(100vw - 36px));
+      margin-bottom: 10px;
+      background: rgba(14, 28, 52, 0.98);
+      border: 1px solid rgba(111, 178, 255, 0.38);
+      border-radius: 10px;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.42);
+      overflow: hidden;
+    }
+    .story-audio-header,
+    .story-audio-controls,
+    .story-audio-progress {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+    }
+    .story-audio-header {
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .story-audio-title {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .story-audio-btn {
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 8px;
+      background: #1f4f86;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+      padding: 7px 10px;
+    }
+    .story-audio-btn:hover,
+    .story-audio-track:hover {
+      background: #2d7bd2;
+    }
+    .story-audio-btn.danger {
+      background: #733047;
+    }
+    .story-audio-list {
+      max-height: 180px;
+      overflow: auto;
+      padding: 8px;
+      display: grid;
+      gap: 6px;
+    }
+    .story-audio-track {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.07);
+      color: #eaf3ff;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .story-audio-track.is-active {
+      border-color: #7fd7ff;
+      background: rgba(64, 148, 230, 0.32);
+    }
+    .story-audio-track-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+    .story-audio-track-size,
+    .story-audio-empty,
+    .story-audio-time {
+      color: #b8d6ef;
+      font-size: 0.82rem;
+    }
+    .story-audio-empty {
+      padding: 16px 12px;
+      text-align: center;
+    }
+    .story-audio-progress input {
+      flex: 1;
+      min-width: 0;
+    }
+    .story-audio-panel audio {
+      display: none;
+    }
+    @media (max-width: 620px) {
+      #story-audio-shell {
+        left: 10px;
+        bottom: 10px;
+      }
+      .story-audio-panel {
+        width: calc(100vw - 20px);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+async function storyAudioBuildPlayer() {
+  if (document.getElementById("story-audio-shell")) return;
+  storyAudioInjectStyles();
+  await storyAudioLoadLibrary();
+
+  const shell = document.createElement("div");
+  shell.id = "story-audio-shell";
+  shell.innerHTML = `
+    <div class="story-audio-panel" hidden>
+      <div class="story-audio-header">
+        <div class="story-audio-title">No audio loaded</div>
+        <button type="button" class="story-audio-btn" data-audio-action="load">Load</button>
+        <button type="button" class="story-audio-btn" data-audio-action="close">Close</button>
+      </div>
+      <input type="file" accept="audio/*" multiple hidden>
+      <div class="story-audio-empty">Load audio files to build your writing playlist.</div>
+      <div class="story-audio-list"></div>
+      <div class="story-audio-progress">
+        <span class="story-audio-time" data-audio-time="current">0:00</span>
+        <input type="range" min="0" max="100" value="0" step="1" aria-label="Audio progress">
+        <span class="story-audio-time" data-audio-time="duration">0:00</span>
+      </div>
+      <div class="story-audio-controls">
+        <button type="button" class="story-audio-btn" data-audio-action="prev">Prev</button>
+        <button type="button" class="story-audio-btn" data-audio-action="play">Play</button>
+        <button type="button" class="story-audio-btn" data-audio-action="next">Next</button>
+        <button type="button" class="story-audio-btn danger" data-audio-action="remove">Remove</button>
+      </div>
+      <audio></audio>
+    </div>
+    <button type="button" class="story-audio-home" aria-expanded="false">Audio</button>
+  `;
+  document.body.appendChild(shell);
+
+  const panel = shell.querySelector(".story-audio-panel");
+  const homeButton = shell.querySelector(".story-audio-home");
+  const fileInput = shell.querySelector("input[type='file']");
+  const audio = shell.querySelector("audio");
+  const range = shell.querySelector("input[type='range']");
+  const currentTime = shell.querySelector("[data-audio-time='current']");
+  const durationTime = shell.querySelector("[data-audio-time='duration']");
+
+  homeButton.addEventListener("click", () => {
+    const next = panel.hidden ? "1" : "0";
+    localStorage.setItem("storyAudioPanelOpen", next);
+    storyAudioRender();
+  });
+  shell.querySelector("[data-audio-action='close']").addEventListener("click", () => {
+    localStorage.setItem("storyAudioPanelOpen", "0");
+    storyAudioRender();
+  });
+  shell.querySelector("[data-audio-action='load']").addEventListener("click", () => fileInput.click());
+  shell.querySelector("[data-audio-action='prev']").addEventListener("click", () => storyAudioSkip(-1));
+  shell.querySelector("[data-audio-action='next']").addEventListener("click", () => storyAudioSkip(1));
+  shell.querySelector("[data-audio-action='remove']").addEventListener("click", storyAudioRemoveCurrent);
+  shell.querySelector("[data-audio-action='play']").addEventListener("click", () => {
+    if (!storyAudioState.tracks.length) {
+      fileInput.click();
+      return;
+    }
+    if (!audio.src) storyAudioSelect(storyAudioState.currentIndex === -1 ? 0 : storyAudioState.currentIndex, false);
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+    storyAudioRender();
+  });
+  fileInput.addEventListener("change", async () => {
+    await storyAudioAddFiles(fileInput.files);
+    fileInput.value = "";
+  });
+  audio.addEventListener("play", storyAudioRender);
+  audio.addEventListener("pause", storyAudioRender);
+  audio.addEventListener("ended", () => storyAudioSkip(1));
+  audio.addEventListener("timeupdate", () => {
+    range.value = audio.duration ? String((audio.currentTime / audio.duration) * 100) : "0";
+    currentTime.textContent = storyAudioFormatTime(audio.currentTime);
+    durationTime.textContent = storyAudioFormatTime(audio.duration);
+  });
+  range.addEventListener("input", () => {
+    if (!audio.duration) return;
+    audio.currentTime = (Number(range.value) / 100) * audio.duration;
+  });
+
+  storyAudioState.ready = true;
+  storyAudioRender();
+}
+
+window.openStoryAudioPanel = async function openStoryAudioPanel() {
+  await storyAudioBuildPlayer();
+  localStorage.setItem("storyAudioPanelOpen", "1");
+  storyAudioRender();
+};
+
+document.addEventListener("DOMContentLoaded", storyAudioBuildPlayer);
+
 // Optional floating hub navigation helper
 document.addEventListener("DOMContentLoaded", async () => {
   // Avoid adding to the hub itself or duplicating

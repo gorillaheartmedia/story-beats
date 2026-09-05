@@ -84,6 +84,7 @@
       border: 1.6px solid #3b82f644;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 140px;
+      font-family: inherit;
     }
     .core-tile:hover {
       background: linear-gradient(110deg, #2671f2 60%, #48c6f9 100%);
@@ -290,6 +291,10 @@
         <span class="tile-icon">dY?`</span>
         5 Traits Grid
       </a>
+      <button type="button" class="core-tile" data-tool="audio" onclick="window.openStoryAudioPanel && window.openStoryAudioPanel()">
+        <span class="tile-icon">Audio</span>
+        Audio Playlist
+      </button>
     </div>
     <div class="core-actions">
       <button onclick="alert('Export Coming Soon!')">📤 Export Project</button>
