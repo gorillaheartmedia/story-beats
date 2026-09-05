@@ -166,6 +166,9 @@ let storyAudioState = {
   tracks: [],
   currentIndex: -1,
   urls: new Map(),
+  shuffle: localStorage.getItem("storyAudioShuffle") === "1",
+  loop: localStorage.getItem("storyAudioLoop") === "1",
+  volume: Number(localStorage.getItem("storyAudioVolume") || "0.85"),
   ready: false
 };
 
@@ -178,6 +181,12 @@ function storyAudioFormatTime(seconds) {
 
 function storyAudioTrackLabel(track, index) {
   return track && track.name ? track.name : `Track ${index + 1}`;
+}
+
+function storyAudioClampVolume(value) {
+  const next = Number(value);
+  if (!Number.isFinite(next)) return 0.85;
+  return Math.min(1, Math.max(0, next));
 }
 
 async function storyAudioLoadLibrary() {
@@ -228,6 +237,10 @@ function storyAudioRender() {
   const empty = shell.querySelector(".story-audio-empty");
   const audio = shell.querySelector("audio");
   const playButton = shell.querySelector("[data-audio-action='play']");
+  const shuffleButton = shell.querySelector("[data-audio-action='shuffle']");
+  const loopButton = shell.querySelector("[data-audio-action='loop']");
+  const volumeInput = shell.querySelector("[data-audio-volume]");
+  const volumeValue = shell.querySelector("[data-audio-volume-value]");
   const homeButton = shell.querySelector(".story-audio-home");
   const isOpen = localStorage.getItem("storyAudioPanelOpen") === "1";
 
@@ -263,6 +276,17 @@ function storyAudioRender() {
     audio.removeAttribute("src");
     audio.dataset.trackId = "";
   }
+  audio.volume = storyAudioClampVolume(storyAudioState.volume);
+  if (shuffleButton) {
+    shuffleButton.classList.toggle("is-active", storyAudioState.shuffle);
+    shuffleButton.setAttribute("aria-pressed", String(storyAudioState.shuffle));
+  }
+  if (loopButton) {
+    loopButton.classList.toggle("is-active", storyAudioState.loop);
+    loopButton.setAttribute("aria-pressed", String(storyAudioState.loop));
+  }
+  if (volumeInput) volumeInput.value = String(Math.round(storyAudioClampVolume(storyAudioState.volume) * 100));
+  if (volumeValue) volumeValue.textContent = `${Math.round(storyAudioClampVolume(storyAudioState.volume) * 100)}%`;
   playButton.textContent = audio.paused ? "Play" : "Pause";
 }
 
@@ -281,8 +305,51 @@ function storyAudioSelect(index, shouldPlay) {
 
 function storyAudioSkip(delta) {
   if (!storyAudioState.tracks.length) return;
+  if (storyAudioState.shuffle && storyAudioState.tracks.length > 1) {
+    let next = storyAudioState.currentIndex;
+    while (next === storyAudioState.currentIndex) {
+      next = Math.floor(Math.random() * storyAudioState.tracks.length);
+    }
+    storyAudioSelect(next, true);
+    return;
+  }
   const next = (storyAudioState.currentIndex + delta + storyAudioState.tracks.length) % storyAudioState.tracks.length;
   storyAudioSelect(next, true);
+}
+
+function storyAudioFinishTrack() {
+  if (!storyAudioState.tracks.length) return;
+  const isLast = storyAudioState.currentIndex === storyAudioState.tracks.length - 1;
+  if (storyAudioState.loop || storyAudioState.shuffle || !isLast) {
+    storyAudioSkip(1);
+    return;
+  }
+  const audio = document.querySelector("#story-audio-shell audio");
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+  storyAudioRender();
+}
+
+function storyAudioToggleShuffle() {
+  storyAudioState.shuffle = !storyAudioState.shuffle;
+  localStorage.setItem("storyAudioShuffle", storyAudioState.shuffle ? "1" : "0");
+  storyAudioRender();
+}
+
+function storyAudioToggleLoop() {
+  storyAudioState.loop = !storyAudioState.loop;
+  localStorage.setItem("storyAudioLoop", storyAudioState.loop ? "1" : "0");
+  storyAudioRender();
+}
+
+function storyAudioSetVolume(value) {
+  storyAudioState.volume = storyAudioClampVolume(Number(value) / 100);
+  localStorage.setItem("storyAudioVolume", String(storyAudioState.volume));
+  const audio = document.querySelector("#story-audio-shell audio");
+  if (audio) audio.volume = storyAudioState.volume;
+  storyAudioRender();
 }
 
 async function storyAudioAddFiles(files) {
@@ -379,6 +446,11 @@ function storyAudioInjectStyles() {
     .story-audio-track:hover {
       background: #2d7bd2;
     }
+    .story-audio-btn.is-active {
+      background: #55c6a5;
+      color: #061922;
+      border-color: rgba(255,255,255,0.34);
+    }
     .story-audio-btn.danger {
       background: #733047;
     }
@@ -429,6 +501,16 @@ function storyAudioInjectStyles() {
       flex: 1;
       min-width: 0;
     }
+    .story-audio-volume {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 0 10px 10px;
+    }
+    .story-audio-volume input {
+      min-width: 0;
+    }
     .story-audio-panel audio {
       display: none;
     }
@@ -471,7 +553,14 @@ async function storyAudioBuildPlayer() {
         <button type="button" class="story-audio-btn" data-audio-action="prev">Prev</button>
         <button type="button" class="story-audio-btn" data-audio-action="play">Play</button>
         <button type="button" class="story-audio-btn" data-audio-action="next">Next</button>
+        <button type="button" class="story-audio-btn" data-audio-action="shuffle" aria-pressed="false">Shuffle</button>
+        <button type="button" class="story-audio-btn" data-audio-action="loop" aria-pressed="false">Loop</button>
         <button type="button" class="story-audio-btn danger" data-audio-action="remove">Remove</button>
+      </div>
+      <div class="story-audio-volume">
+        <span class="story-audio-time">Volume</span>
+        <input type="range" min="0" max="100" value="85" step="1" data-audio-volume aria-label="Audio volume">
+        <span class="story-audio-time" data-audio-volume-value>85%</span>
       </div>
       <audio></audio>
     </div>
@@ -499,6 +588,8 @@ async function storyAudioBuildPlayer() {
   shell.querySelector("[data-audio-action='load']").addEventListener("click", () => fileInput.click());
   shell.querySelector("[data-audio-action='prev']").addEventListener("click", () => storyAudioSkip(-1));
   shell.querySelector("[data-audio-action='next']").addEventListener("click", () => storyAudioSkip(1));
+  shell.querySelector("[data-audio-action='shuffle']").addEventListener("click", storyAudioToggleShuffle);
+  shell.querySelector("[data-audio-action='loop']").addEventListener("click", storyAudioToggleLoop);
   shell.querySelector("[data-audio-action='remove']").addEventListener("click", storyAudioRemoveCurrent);
   shell.querySelector("[data-audio-action='play']").addEventListener("click", () => {
     if (!storyAudioState.tracks.length) {
@@ -514,9 +605,12 @@ async function storyAudioBuildPlayer() {
     await storyAudioAddFiles(fileInput.files);
     fileInput.value = "";
   });
+  shell.querySelector("[data-audio-volume]").addEventListener("input", event => {
+    storyAudioSetVolume(event.target.value);
+  });
   audio.addEventListener("play", storyAudioRender);
   audio.addEventListener("pause", storyAudioRender);
-  audio.addEventListener("ended", () => storyAudioSkip(1));
+  audio.addEventListener("ended", storyAudioFinishTrack);
   audio.addEventListener("timeupdate", () => {
     range.value = audio.duration ? String((audio.currentTime / audio.duration) * 100) : "0";
     currentTime.textContent = storyAudioFormatTime(audio.currentTime);
