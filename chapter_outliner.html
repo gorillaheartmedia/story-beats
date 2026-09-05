@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
 <meta charset="UTF-8">
 <title>Chapter Outliner + Story Drafter</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -30,6 +31,9 @@ h1,h2,h3 { margin:0; color:#fff; }
   border-bottom: 1.5px solid #3b82f644;
 }
 .header-actions .btn { margin-left: 8px; }
+.mode-tabs { display:inline-flex; gap:6px; padding:4px; background:#14283c; border:1px solid #3b82f644; border-radius:9px; }
+.mode-tabs .btn { margin-left:0; }
+.mode-tabs .btn.active { background:#4befff; color:#08152a; }
 
 /* Buttons */
 .btn {
@@ -126,7 +130,10 @@ h1,h2,h3 { margin:0; color:#fff; }
 <header class="header">
   <h1>📚 Chapter Outliner</h1>
   <div class="header-actions">
-    <button id="toggleModeBtn" class="btn">Switch to Story Drafter</button>
+    <span class="mode-tabs">
+      <button id="outlinerModeBtn" class="btn">Chapter Outliner</button>
+      <button id="drafterModeBtn" class="btn">Story Drafter</button>
+    </span>
     <button id="exportPdfBtn" class="btn">📄 Export PDF</button>
     <button id="exportDocxBtn" class="btn">📝 Export Word</button>
     <button id="exportJsonBtn" class="btn">💾 Export JSON</button>
@@ -196,7 +203,9 @@ let projectId = storedProject?.id || localStorage.getItem("currentProjectId") ||
 let chapters = JSON.parse(localStorage.getItem("chapters_" + projectId) || "[]");
 let activeChapterIndex = 0;
 let quill, drafterQuill;
-let storyMode = localStorage.getItem("storyMode") || "outliner";
+const pageParams = new URLSearchParams(window.location.search);
+let storyMode = pageParams.get("mode") || localStorage.getItem("storyMode") || "outliner";
+if (!["outliner", "drafter"].includes(storyMode)) storyMode = "outliner";
 let activeDraftChapter = null;
 
 // Sprint button setup
@@ -234,6 +243,36 @@ function getWordCount(html) {
   return html.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(w => w).length;
 }
 
+function htmlToPlainLines(html) {
+  const div = document.createElement("div");
+  div.innerHTML = html || "";
+  div.querySelectorAll("p, div, h1, h2, h3, h4, h5, h6, li, blockquote, pre").forEach(el => {
+    el.appendChild(document.createTextNode("\n"));
+  });
+  return (div.textContent || "")
+    .replace(/\u00a0/g, " ")
+    .split(/\n+/)
+    .map(line => line.trim())
+    .filter(Boolean);
+}
+
+function htmlToDocxParagraphs(html) {
+  const { Paragraph, TextRun } = window.docx;
+  const lines = htmlToPlainLines(html);
+  if (!lines.length) return [new Paragraph("")];
+  return lines.map(line => new Paragraph({ children: [new TextRun(line)] }));
+}
+
+function persistActiveEditors() {
+  if (quill && chapters[activeChapterIndex]) {
+    chapters[activeChapterIndex].bodyHtml = quill.root.innerHTML;
+  }
+  if (drafterQuill && activeDraftChapter !== null && chapters[activeDraftChapter]) {
+    chapters[activeDraftChapter].bodyHtml = drafterQuill.root.innerHTML;
+  }
+  saveChapters();
+}
+
 function loadChapter(index) {
   activeChapterIndex = index;
   quill.root.innerHTML = chapters[index].bodyHtml;
@@ -261,26 +300,42 @@ function initQuillEditors() {
     theme: 'snow',
     modules: { toolbar: [['bold','italic','underline'],[{header:[1,2,false]}],[{list:'ordered'},{list:'bullet'}],['blockquote','link','image'],['clean']] }
   });
+  drafterQuill.on('text-change', () => {
+    if (activeDraftChapter !== null && chapters[activeDraftChapter]) {
+      chapters[activeDraftChapter].bodyHtml = drafterQuill.root.innerHTML;
+      saveChapters();
+    }
+  });
 }
-document.getElementById("toggleModeBtn").addEventListener("click", () => {
-  if (storyMode === "outliner") switchToStoryMode(); else switchToOutlinerMode();
-});
+document.getElementById("outlinerModeBtn").addEventListener("click", switchToOutlinerMode);
+document.getElementById("drafterModeBtn").addEventListener("click", switchToStoryMode);
+
+function updateModeChrome() {
+  const title = document.querySelector(".header h1");
+  const outlinerBtn = document.getElementById("outlinerModeBtn");
+  const drafterBtn = document.getElementById("drafterModeBtn");
+  if (title) title.textContent = storyMode === "drafter" ? "Story Drafter" : "Chapter Outliner";
+  document.title = storyMode === "drafter" ? "Story Drafter" : "Chapter Outliner";
+  outlinerBtn.classList.toggle("active", storyMode === "outliner");
+  drafterBtn.classList.toggle("active", storyMode === "drafter");
+}
 
 function switchToStoryMode() {
   document.getElementById("outlinerMode").style.display = "none";
   document.getElementById("storyDrafter").style.display = "block";
-  document.getElementById("toggleModeBtn").textContent = "Switch to Chapter Outliner";
   storyMode = "drafter";
   localStorage.setItem("storyMode", "drafter");
+  updateModeChrome();
   renderDrafterChapters();
+  if (chapters.length && activeDraftChapter === null) loadDraftChapter(activeChapterIndex || 0);
 }
 
 function switchToOutlinerMode() {
   document.getElementById("outlinerMode").style.display = "flex";
   document.getElementById("storyDrafter").style.display = "none";
-  document.getElementById("toggleModeBtn").textContent = "Switch to Story Drafter";
   storyMode = "outliner";
   localStorage.setItem("storyMode", "outliner");
+  updateModeChrome();
 }
 
 function renderDrafterChapters() {
@@ -362,15 +417,14 @@ document.getElementById("drafterDictateBtn").addEventListener("click", () => {
 // PDF Export
 document.getElementById("exportPdfBtn").addEventListener("click", () => {
   const { jsPDF } = window.jspdf;
+  persistActiveEditors();
   const doc = new jsPDF();
   doc.setFontSize(18);
   doc.text("Project: " + projectId, 10, 20);
   chapters.forEach(ch => {
     doc.addPage();
     doc.setFontSize(16).text(ch.title, 10, 20);
-    const div = document.createElement("div");
-    div.innerHTML = ch.bodyHtml;
-    doc.setFontSize(12).text(div.innerText, 10, 30);
+    doc.setFontSize(12).text(htmlToPlainLines(ch.bodyHtml).join("\n"), 10, 30);
   });
   doc.save("chapters.pdf");
 });
@@ -378,6 +432,7 @@ document.getElementById("exportPdfBtn").addEventListener("click", () => {
 // DOCX Export (Story Drafter gets book style)
 document.getElementById("exportDocxBtn").addEventListener("click", async () => {
   const { Document, Packer, Paragraph, HeadingLevel, TextRun, AlignmentType } = window.docx;
+  persistActiveEditors();
 
   if (storyMode === "drafter") {
     const storyTitle = document.getElementById("storyTitle").value || "Untitled Story";
@@ -404,9 +459,7 @@ document.getElementById("exportDocxBtn").addEventListener("click", async () => {
 
     chapters.forEach(ch => {
       const paras = [ new Paragraph({ text: ch.title, heading: HeadingLevel.HEADING_1 }) ];
-      const div = document.createElement("div");
-      div.innerHTML = ch.bodyHtml;
-      div.innerText.split("\n").forEach(line => paras.push(new Paragraph(line)));
+      paras.push(...htmlToDocxParagraphs(ch.bodyHtml));
       sections.push({ children: paras });
     });
 
@@ -420,9 +473,7 @@ document.getElementById("exportDocxBtn").addEventListener("click", async () => {
   } else {
     const sections = chapters.map(ch => {
       const paras = [ new Paragraph({ text: ch.title, heading: HeadingLevel.HEADING_1 }) ];
-      const div = document.createElement("div");
-      div.innerHTML = ch.bodyHtml;
-      div.innerText.split("\n").forEach(line => paras.push(new Paragraph(line)));
+      paras.push(...htmlToDocxParagraphs(ch.bodyHtml));
       return { children: paras };
     });
     const docxFile = new Document({ sections });
@@ -455,7 +506,9 @@ window.addEventListener("load", () => {
   if (chapters.length === 0) { chapters = starterChapters; saveChapters(); }
   initQuillEditors();
   renderChapters();
+  if (chapters.length) loadChapter(activeChapterIndex);
   if (storyMode === "drafter") switchToStoryMode();
+  else updateModeChrome();
 });
 
 function renderChapters() {
@@ -515,3 +568,5 @@ document.getElementById("pasteSprintBtn").addEventListener("click", async () => 
 </script>
 </body>
 </html>
+
+

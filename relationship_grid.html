@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <title>Relationship Compass (Story Mechanics Edition)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -199,10 +200,10 @@ const COMPASS = [
 
 // --- Get projectId from URL ---
 const params = new URLSearchParams(window.location.search);
-const projectId = params.get("projectId");
+const projectId = params.get("projectId") || params.get("id");
 if (!projectId) {
   alert("No projectId found in URL.");
-  window.location.href = "dashboard.html";
+  window.location.href = "project_core.html";
 }
 
 // --- LocalStorage keys ---
@@ -482,3 +483,5 @@ document.getElementById("backToProfileBtn").onclick = function () {
   <div class="cat-tip" id="catTip"></div>
 </body>
 </html>
+
+

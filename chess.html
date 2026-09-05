@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Literary Chessboard Tool</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#121a24;
+      --panel2:#0e1520;
+      --text:#e7eef8;
+      --muted:#9ab0c9;
+      --accent:#6ee7ff;
+      --danger:#ff5f7a;
+
+      --light:#2a3a4f;
+      --dark:#1b2636;
+
+      --gridSize: 8;
+      --tile: 64px;
+      --boardPadding: 14px;
+      --radius: 18px;
+      --shadow: 0 16px 50px rgba(0,0,0,.45);
+      --shadow2: 0 10px 25px rgba(0,0,0,.35);
+    }
+
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 800px at 20% 15%, #122033 0%, var(--bg) 55%, #070a0f 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display:flex;
+      align-items:stretch;
+      justify-content:center;
+    }
+
+    .app{
+      width: min(1280px, 100%);
+      display:grid;
+      grid-template-columns: 360px 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      overflow:hidden;
+    }
+
+    .panelHeader{
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.02);
+    }
+
+    .title{
+      font-size: 18px;
+      font-weight: 750;
+      letter-spacing: .2px;
+      margin:0 0 6px 0;
+    }
+
+    .subtitle{
+      margin:0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .panelBody{
+      padding: 14px 16px 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .row{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+    }
+
+    input[type="text"], input[type="number"], select, textarea{
+      width:100%;
+      padding: 10px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.28);
+      color: var(--text);
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    textarea{
+      min-height: 120px;
+      resize: vertical;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .btn{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      cursor:pointer;
+      font-weight: 650;
+      letter-spacing: .2px;
+      user-select:none;
+      text-align:center;
+    }
+
+    .btnPrimary{
+      background: rgba(110,231,255,.14);
+      border-color: rgba(110,231,255,.35);
+    }
+
+    .btnDanger{
+      background: rgba(255,95,122,.14);
+      border-color: rgba(255,95,122,.35);
+    }
+
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .divider{
+      height:1px;
+      background: rgba(255,255,255,.08);
+      margin: 6px 0;
+    }
+
+    /* Board Area */
+    .boardWrap{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+
+    .boardTopbar{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      justify-content:space-between;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: var(--shadow2);
+    }
+
+    .chip{
+      display:inline-flex;
+      gap: 8px;
+      align-items:center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.22);
+      color: var(--muted);
+      font-size: 12px;
+      user-select:none;
+    }
+
+    .board{
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: var(--radius);
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: var(--shadow);
+      background: rgba(0,0,0,.18);
+    }
+
+    .grid{
+      position:absolute;
+      inset: var(--boardPadding);
+      display:grid;
+      grid-template-columns: repeat(var(--gridSize), 1fr);
+      grid-template-rows: repeat(var(--gridSize), 1fr);
+      border-radius: calc(var(--radius) - 8px);
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.15);
+    }
+
+    .piecesLayer{
+      position:absolute;
+      inset: var(--boardPadding);
+      pointer-events:none;
+    }
+
+    .piece{
+      position:absolute;
+      width: calc(var(--tile) * 0.92);
+      height: calc(var(--tile) * 0.92);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      box-shadow: 0 10px 24px rgba(0,0,0,.45);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding: 8px;
+      cursor: grab;
+      pointer-events: auto;
+      user-select:none;
+    }
+
+    .piece.selected{
+      border-color: rgba(110,231,255,.65);
+      box-shadow: 0 14px 35px rgba(0,0,0,.55), 0 0 0 3px rgba(110,231,255,.18);
+    }
+
+    /* Floating Character Panel */
+    .charFloat{
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 360px;
+      max-height: 70vh;
+      display:flex;
+      flex-direction: column;
+      z-index: 999;
+      background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,.7));
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      box-shadow: 0 30px 80px rgba(0,0,0,.65);
+    }
+
+    .charFloat.hidden{ display:none; }
+
+    .charFloatHeader{
+      padding: 14px 16px;
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .charFloatBody{
+      padding: 14px 16px;
+      overflow-y: auto;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  </style>
+  <script src="project-safety.js"></script>
+</head>
+<body>
+  <div class="app">
+    <!-- LEFT PANEL -->
+    <div class="panel">
+      <div class="panelHeader">
+        <h1 class="title">Literary Chessboard</h1>
+        <p class="subtitle">
+          Rename anything, move anything. Treat it like a plot board:
+          characters, motives, clues, symbols.
+        </p>
+      </div>
+
+      <div class="panelBody">
+
+        <div>
+          <label for="boardSize">Board size (N×N)</label>
+          <div class="row">
+            <input id="boardSize" type="number" min="2" max="30" value="8" />
+            <button class="btn" id="applyBoardSize">Apply</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <label>Create a piece</label>
+          <div class="row">
+            <input
+              id="pieceName"
+              type="text"
+              placeholder="e.g., The Witness / The Knife / Dave / The Secret"
+            />
+          </div>
+
+          <div class="row">
+            <select id="pieceColor" title="Piece color">
+              <option value="white">White</option>
+              <option value="black">Black</option>
+            </select>
+
+            <select id="pieceRender" title="Render mode">
+              <option value="text">Text</option>
+              <option value="sprite">Sprite</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <select id="pieceType" title="Chess type">
+              <option value="rook">Rook</option>
+              <option value="pawn">Pawn</option>
+              <option value="knight">Knight</option>
+              <option value="bishop">Bishop</option>
+              <option value="queen">Queen</option>
+              <option value="king">King</option>
+            </select>
+
+            <button class="btn btnPrimary" id="addPiece">Add</button>
+          </div>
+
+          <div class="hint">
+            <b>Controls:</b><br/>
+            • Drag pieces freely<br/>
+            • Click to select<br/>
+            • Press <b>Delete</b> to remove selected<br/>
+            • Choose <b>Sprite</b> render to use chess PNGs
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <label>Save / Load</label>
+          <div class="row">
+            <button class="btn" id="saveBoard">Save</button>
+            <button class="btn" id="loadBoard">Load</button>
+            <button class="btn btnDanger" id="clearBoard">Clear</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div>
+          <label>Export / Import JSON</label>
+          <textarea
+            id="jsonBox"
+            placeholder="Export appears here. Paste JSON here to import..."
+          ></textarea>
+          <div class="row">
+            <button class="btn" id="exportJson">Export</button>
+            <button class="btn" id="importJson">Import</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- BOARD AREA -->
+    <div class="boardWrap">
+      <div class="boardTopbar">
+        <div class="left">
+          <span class="chip">Selected: <b id="selectedName">None</b></span>
+          <span class="chip">Pieces: <b id="pieceCount">0</b></span>
+        </div>
+        <div class="right">
+          <button class="btn btnPrimary" id="backToCore">Back to Project Hub</button>
+        </div>
+      </div>
+
+      <div class="board panel" id="board">
+        <div class="grid" id="grid"></div>
+        <div class="piecesLayer" id="piecesLayer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING CHARACTER PANEL -->
+  <div id="charFloat" class="charFloat hidden">
+    <div class="charFloatHeader">
+      <div>
+        <h2 class="title" id="charFloatTitle">Character</h2>
+        <p class="subtitle" id="charFloatSubtitle"></p>
+      </div>
+      <button class="btn" id="charFloatClose">✕</button>
+    </div>
+
+    <div class="charFloatBody" id="charFloatBody">
+      <!-- dynamically filled -->
+    </div>
+  </div>
+  <script>
+    // -----------------------------
+    // Literary Chessboard Tool
+    // Single-file version
+    // -----------------------------
+
+
+    const els = {
+      board: document.getElementById("board"),
+      grid: document.getElementById("grid"),
+      piecesLayer: document.getElementById("piecesLayer"),
+
+      boardSize: document.getElementById("boardSize"),
+      applyBoardSize: document.getElementById("applyBoardSize"),
+
+      pieceName: document.getElementById("pieceName"),
+      pieceColor: document.getElementById("pieceColor"),
+      pieceRender: document.getElementById("pieceRender"),
+      pieceType: document.getElementById("pieceType"),
+      addPiece: document.getElementById("addPiece"),
+
+      saveBoard: document.getElementById("saveBoard"),
+      loadBoard: document.getElementById("loadBoard"),
+      clearBoard: document.getElementById("clearBoard"),
+
+      exportJson: document.getElementById("exportJson"),
+      importJson: document.getElementById("importJson"),
+      jsonBox: document.getElementById("jsonBox"),
+
+      selectedName: document.getElementById("selectedName"),
+      pieceCount: document.getElementById("pieceCount"),
+
+      // removed toggles not in use
+    };
+
+    const STORAGE_KEY_BASE = "literary_chessboard_v1";
+    let STORAGE_KEY = STORAGE_KEY_BASE;
+    let currentProjectId = null;
+
+    let state = {
+      gridSize: 8,
+      pieces: [],
+      selectedId: null
+    };
+
+    // -----------------------------
+// Chess PNG Config
+// -----------------------------
+const CHESS_PNG_PATH = "assets/chess";
+
+function chessPngSrc(color, type){
+  return `${CHESS_PNG_PATH}/${color}_${type}.png`;
+}
+
+
+    // -----------------------------
+    // Floating Character Panel
+    // -----------------------------
+    const charFloat = {
+      el: document.getElementById("charFloat"),
+      title: document.getElementById("charFloatTitle"),
+      subtitle: document.getElementById("charFloatSubtitle"),
+      body: document.getElementById("charFloatBody"),
+      closeBtn: document.getElementById("charFloatClose"),
+      open(){
+        this.el.classList.remove("hidden");
+      },
+      close(){
+        this.el.classList.add("hidden");
+      }
+    };
+
+    charFloat.closeBtn.onclick = () => {
+      state.selectedId = null;
+      selectPiece(null);
+      charFloat.close();
+    };
+
+    window.addEventListener("keydown", e => {
+      if(e.key === "Escape"){
+        state.selectedId = null;
+        selectPiece(null);
+        charFloat.close();
+      }
+    });
+    // -----------------------------
+// Draggable Floating Panel
+// -----------------------------
+(function enablePanelDrag(){
+  const panel = charFloat.el;
+  const header = panel.querySelector(".charFloatHeader");
+
+  let dragging = false;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  header.addEventListener("mousedown", e => {
+    dragging = true;
+    const rect = panel.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+
+    panel.style.right = "auto";
+    panel.style.bottom = "auto";
+    panel.style.left = rect.left + "px";
+    panel.style.top = rect.top + "px";
+
+    document.body.style.userSelect = "none";
+  });
+
+  window.addEventListener("mousemove", e => {
+    if(!dragging) return;
+    panel.style.left = (e.clientX - offsetX) + "px";
+    panel.style.top = (e.clientY - offsetY) + "px";
+  });
+
+  window.addEventListener("mouseup", () => {
+    dragging = false;
+    document.body.style.userSelect = "";
+  });
+})();
+
+
+    // -----------------------------
+    // Utility
+    // -----------------------------
+    function uid(){
+      return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+    }
+
+    function clamp(n, min, max){
+      return Math.max(min, Math.min(max, n));
+    }
+
+    function getBoardRect(){
+      return els.piecesLayer.getBoundingClientRect();
+    }
+
+    function computeTileSize(){
+      const rect = els.piecesLayer.getBoundingClientRect();
+      const size = Math.min(rect.width, rect.height);
+      return size / state.gridSize;
+    }
+
+    function setCSSVars(){
+      document.documentElement.style.setProperty("--gridSize", state.gridSize);
+      document.documentElement.style.setProperty("--tile", computeTileSize() + "px");
+    }
+
+    // -----------------------------
+    // Grid
+    // -----------------------------
+    function renderGrid(){
+      els.grid.innerHTML = "";
+      for(let r = 0; r < state.gridSize; r++){
+        for(let c = 0; c < state.gridSize; c++){
+          const cell = document.createElement("div");
+          const dark = (r + c) % 2 === 1;
+          cell.style.background = dark ? "var(--dark)" : "var(--light)";
+          els.grid.appendChild(cell);
+        }
+      }
+      setCSSVars();
+    }
+
+    // -----------------------------
+    // HUD
+    // -----------------------------
+    function updateHUD(){
+      const sel = state.pieces.find(p => p.id === state.selectedId);
+      els.selectedName.textContent = sel ? sel.name : "None";
+      els.pieceCount.textContent = state.pieces.length;
+    }
+
+    // -----------------------------
+    // Character Panel (FLOATING)
+    // -----------------------------
+    function renderCharacterPanel(piece){
+      if(!piece){
+        charFloat.close();
+        return;
+      }
+
+      piece.meta ??= {
+        role:"",
+        goal:"",
+        conflict:"",
+        secret:"",
+        notes:""
+      };
+
+      charFloat.title.textContent = piece.name;
+      charFloat.subtitle.textContent = piece.color + " piece";
+
+      charFloat.body.innerHTML = `
+        <label>Name</label>
+        <input id="cp_name" type="text" value="${piece.name}" />
+
+        <label>Role / Archetype</label>
+        <input id="cp_role" type="text" value="${piece.meta.role}" />
+
+        <label>Goal</label>
+        <input id="cp_goal" type="text" value="${piece.meta.goal}" />
+
+        <label>Conflict</label>
+        <input id="cp_conflict" type="text" value="${piece.meta.conflict}" />
+
+        <label>Secret</label>
+        <input id="cp_secret" type="text" value="${piece.meta.secret}" />
+
+        <label>Notes</label>
+        <textarea id="cp_notes">${piece.meta.notes}</textarea>
+
+        <div class="row">
+          <button class="btn btnDanger" id="cp_delete">Remove Piece</button>
+        </div>
+      `;
+
+      const qs = s => charFloat.body.querySelector(s);
+
+      qs("#cp_name").oninput = e => {
+  piece.name = e.target.value;
+
+  // Update HUD only
+  updateHUD();
+
+  // Update the selected piece's label directly (no re-render)
+  const node = els.piecesLayer.querySelector(
+    `.piece[data-id="${piece.id}"]`
+  );
+
+  if(node && !piece.useSprite){
+    node.textContent = piece.name;
+  }
+
+  autosave();
+};
+
+
+      qs("#cp_role").oninput = e => { piece.meta.role = e.target.value; autosave(); };
+      qs("#cp_goal").oninput = e => { piece.meta.goal = e.target.value; autosave(); };
+      qs("#cp_conflict").oninput = e => { piece.meta.conflict = e.target.value; autosave(); };
+      qs("#cp_secret").oninput = e => { piece.meta.secret = e.target.value; autosave(); };
+      qs("#cp_notes").oninput = e => { piece.meta.notes = e.target.value; autosave(); };
+
+      qs("#cp_delete").onclick = () => {
+        state.pieces = state.pieces.filter(p => p.id !== piece.id);
+        state.selectedId = null;
+        renderPieces();
+        charFloat.close();
+        autosave();
+      };
+
+      charFloat.open();
+    }
+
+    // -----------------------------
+    // Selection
+    // -----------------------------
+    function selectPiece(id){
+      state.selectedId = id;
+
+      for(const node of els.piecesLayer.querySelectorAll(".piece")){
+        node.classList.toggle("selected", node.dataset.id === id);
+      }
+
+      const piece = state.pieces.find(p => p.id === id) || null;
+      renderCharacterPanel(piece);
+      updateHUD();
+    }
+
+    // -----------------------------
+    // Pieces
+    // -----------------------------
+    function createPieceNode(piece){
+  const node = document.createElement("div");
+  node.className = "piece";
+  node.dataset.id = piece.id;
+  node.dataset.color = piece.color;
+
+  if(piece.useSprite){
+    node.classList.add("useSprite");
+
+    const img = document.createElement("img");
+    img.className = "chessImg";
+    img.src = chessPngSrc(piece.color, piece.type);
+    img.alt = `${piece.color} ${piece.type}`;
+    img.draggable = false;
+
+    node.appendChild(img);
+  }else{
+    node.textContent = piece.name;
+  }
+
+  node.style.left = piece.x + "px";
+  node.style.top = piece.y + "px";
+
+  node.addEventListener("mousedown", e => {
+    e.stopPropagation();
+    selectPiece(piece.id);
+  });
+
+  // ---- Dragging (unchanged logic) ----
+  let dragging = false;
+  let startMouse, startPos;
+
+  const onMove = ev => {
+    if(!dragging) return;
+    const rect = getBoardRect();
+
+    const mx = ev.clientX - rect.left;
+    const my = ev.clientY - rect.top;
+
+    piece.x = clamp(mx - startMouse.x + startPos.x, 0, rect.width);
+    piece.y = clamp(my - startMouse.y + startPos.y, 0, rect.height);
+
+    node.style.left = piece.x + "px";
+    node.style.top = piece.y + "px";
+  };
+
+  const onUp = () => {
+    dragging = false;
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    autosave();
+  };
+
+  node.addEventListener("mousedown", e => {
+    dragging = true;
+    const rect = getBoardRect();
+    startMouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    startPos = { x: piece.x, y: piece.y };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  });
+
+  return node;
+}
+
+
+    function renderPieces(){
+      els.piecesLayer.innerHTML = "";
+      for(const p of state.pieces){
+        els.piecesLayer.appendChild(createPieceNode(p));
+      }
+      if(state.selectedId) selectPiece(state.selectedId);
+      else updateHUD();
+    }
+
+    function addPiece(name, color, opts = {}){
+  const rect = getBoardRect();
+
+  const p = {
+    id: uid(),
+    name,
+    color,
+
+    useSprite: !!opts.useSprite,
+    type: opts.type || "pawn",
+
+    x: rect.width / 2,
+    y: rect.height / 2
+  };
+
+  state.pieces.push(p);
+  renderPieces();
+  selectPiece(p.id);
+  autosave();
+}
+
+
+    // -----------------------------
+    // Persistence
+    // -----------------------------
+    function serialize(){
+      return JSON.stringify({
+        gridSize: state.gridSize,
+        pieces: state.pieces
+      }, null, 2);
+    }
+
+    function deserialize(json){
+  const obj = JSON.parse(json);
+
+  state.gridSize = obj.gridSize || 8;
+
+  state.pieces = (obj.pieces || []).map(p => ({
+    id: p.id || uid(),
+    name: p.name || "Untitled",
+    color: p.color || "white",
+
+    useSprite: !!p.useSprite,
+    type: p.type || "pawn",
+
+    x: Number(p.x || 0),
+    y: Number(p.y || 0)
+  }));
+
+  state.selectedId = null;
+  renderGrid();
+  renderPieces();
+}
+
+
+    function autosave(){
+      try{
+        localStorage.setItem(STORAGE_KEY, serialize());
+      }catch(e){}
+    }
+
+    function loadFromStorage(){
+      // Prefer project-scoped save; if missing, try legacy global key then resave into project scope
+      const saved =
+        localStorage.getItem(STORAGE_KEY) ||
+        (currentProjectId ? localStorage.getItem(STORAGE_KEY_BASE) : null);
+      if(!saved) return false;
+      deserialize(saved);
+      if(currentProjectId && !localStorage.getItem(STORAGE_KEY)){
+        autosave();
+      }
+      return true;
+    }
+
+    // -----------------------------
+    // Events
+    // -----------------------------
+    els.applyBoardSize.onclick = () => {
+      state.gridSize = clamp(parseInt(els.boardSize.value) || 8, 2, 30);
+      renderGrid();
+      renderPieces();
+      autosave();
+    };
+
+    els.addPiece.onclick = () => {
+  const name = els.pieceName.value.trim();
+  if(!name) return;
+
+  const color = els.pieceColor.value;
+  const renderMode = els.pieceRender.value;
+  const type = els.pieceType.value;
+
+  addPiece(name, color, {
+    useSprite: renderMode === "sprite",
+    type: type
+  });
+
+  els.pieceName.value = "";
+};
+
+
+    els.saveBoard.onclick = () => autosave();
+    els.loadBoard.onclick = () => loadFromStorage();
+    els.clearBoard.onclick = () => {
+      state.pieces = [];
+      state.selectedId = null;
+      renderPieces();
+      autosave();
+    };
+
+    els.exportJson.onclick = () => {
+      els.jsonBox.value = serialize();
+      els.jsonBox.select();
+    };
+
+    els.importJson.onclick = () => {
+      try{
+        deserialize(els.jsonBox.value);
+        autosave();
+      }catch(e){}
+    };
+
+    // -----------------------------
+    // Boot
+    // -----------------------------
+    async function boot(){
+      currentProjectId = await ensureProjectIdOrRedirect("project_core.html");
+      if(!currentProjectId) return;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const backBtn = document.getElementById("backToCore");
+      if(backBtn){
+        const coreUrl = new URL("project_core.html", window.location.href);
+        coreUrl.searchParams.set("id", currentProjectId);
+        ["sceneId", "characterId", "eventId"].forEach(key => {
+          const val = urlParams.get(key);
+          if(val) coreUrl.searchParams.set(key, val);
+        });
+        backBtn.onclick = () => window.location.href = coreUrl.toString();
+      }
+
+      STORAGE_KEY = `${STORAGE_KEY_BASE}:${currentProjectId}`;
+      renderGrid();
+      if(!loadFromStorage()){
+        addPiece("Protagonist", "white");
+        addPiece("Antagonist", "black");
+      }
+    }
+
+    boot();
+  </script>
+</body>
+</html>
+

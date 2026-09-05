@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Narrative Dynamics – Character Types & Goals</title>
+  <script src="project-safety.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-alt: #151b30;
+      --bg-alt-soft: #1b2238;
+      --accent: #6ee7ff;
+      --accent-soft: rgba(110, 231, 255, 0.15);
+      --accent-strong: #22d3ee;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-subtle: #1f2937;
+      --danger: #f97373;
+      --radius-lg: 12px;
+      --radius-xl: 18px;
+      --shadow-soft: 0 18px 35px rgba(0, 0, 0, 0.6);
+      --shadow-subtle: 0 0 0 1px rgba(148, 163, 184, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1220px;
+      margin: 24px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+      border-radius: 26px;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .nav-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 18px 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .nav-action {
+      color: var(--accent-strong);
+      text-decoration: none;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(110, 231, 255, 0.35);
+      background: rgba(110, 231, 255, 0.1);
+    }
+
+    .nav-action:hover {
+      border-color: rgba(110, 231, 255, 0.6);
+      box-shadow: 0 0 0 4px rgba(110, 231, 255, 0.15);
+    }
+
+    .nav-context {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    header {
+      padding: 20px 24px 14px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.16) 0, transparent 52%),
+                  radial-gradient(circle at top right, rgba(129, 140, 248, 0.17) 0, transparent 58%);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.45rem;
+      letter-spacing: 0.03em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    header h1 span.badge {
+      font-size: 0.72rem;
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      color: var(--accent-strong);
+      background: rgba(15, 23, 42, 0.8);
+      text-transform: uppercase;
+    }
+
+    header p {
+      margin: 6px 0 0;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .top-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px 24px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: radial-gradient(circle at bottom left, rgba(56, 189, 248, 0.08) 0, transparent 50%);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 220px;
+      flex: 0 0 auto;
+    }
+
+    .control-group.wide {
+      flex: 1 1 280px;
+      min-width: 260px;
+    }
+
+    .control-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    select,
+    input[type="text"] {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      background: radial-gradient(circle at top, #020617, #020617);
+      color: var(--text-main);
+      outline: none;
+      min-height: 34px;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.6);
+    }
+
+    input[type="text"] {
+      border-radius: 999px;
+    }
+
+    select:focus,
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.6),
+                  0 0 0 4px rgba(56, 189, 248, 0.25);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.3fr);
+      gap: 0;
+      padding: 16px 18px 20px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+      }
+    }
+
+    .matrix-card {
+      background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 24, 39, 0.98));
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      box-shadow: var(--shadow-subtle);
+      padding: 14px 14px 10px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .matrix-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding-inline: 4px;
+    }
+
+    .matrix-header h2 {
+      margin: 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+    }
+
+    .matrix-header span.sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .matrix-scroll {
+      margin-top: 10px;
+      padding: 0;
+      border-radius: 18px;
+      background: radial-gradient(circle at top, rgba(30, 64, 175, 0.8) 0, rgba(15, 23, 42, 0.97) 52%, #020617 100%);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      overflow: auto;
+      max-height: 470px;
+      position: relative;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      min-width: 780px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.98));
+      backdrop-filter: blur(6px);
+    }
+
+    th,
+    td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(30, 64, 175, 0.7);
+      vertical-align: middle;
+    }
+
+    thead th {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid rgba(59, 130, 246, 0.9);
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background 0.12s ease, box-shadow 0.16s ease;
+    }
+
+    tbody tr:nth-child(even) {
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.97));
+    }
+
+    tbody tr:nth-child(odd) {
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.97), rgba(17, 24, 39, 0.98));
+    }
+
+    tbody tr:hover {
+      background: radial-gradient(circle at center, rgba(56, 189, 248, 0.13) 0, rgba(15, 23, 42, 0.98) 45%);
+    }
+
+    tbody tr.active {
+      background: radial-gradient(circle at left, rgba(56, 189, 248, 0.17) 0, rgba(15, 23, 42, 0.98) 60%);
+      box-shadow: inset 2px 0 0 var(--accent);
+    }
+
+    tbody th {
+      font-weight: 600;
+      width: 210px;
+      white-space: nowrap;
+    }
+
+    tbody th .stage-index {
+      font-size: 0.75rem;
+      color: var(--accent-strong);
+      margin-right: 4px;
+      opacity: 0.85;
+    }
+
+    tbody th .stage-name {
+      font-size: 0.82rem;
+    }
+
+    tbody th .stage-tagline {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      opacity: 0.85;
+    }
+
+    td select {
+      width: 100%;
+      font-size: 0.78rem;
+      min-height: 28px;
+      padding-block: 3px;
+      border-radius: 999px;
+    }
+
+    .trait-header-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .trait-header-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .trait-header-main span.dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--accent-strong);
+      box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.18);
+    }
+
+    .trait-header-main span.text {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .trait-header-sub {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      opacity: 0.9;
+    }
+
+    .details-card {
+      background: linear-gradient(145deg, #020617, #020617);
+      border-radius: var(--radius-xl);
+      border: 1px solid rgba(55, 65, 81, 0.95);
+      box-shadow: var(--shadow-subtle);
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      max-height: 510px;
+    }
+
+    .details-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .details-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+    }
+
+    .details-chip {
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top left, var(--accent-soft) 0, rgba(15, 23, 42, 1) 60%);
+      border: 1px solid rgba(56, 189, 248, 0.5);
+      color: var(--accent-strong);
+    }
+
+    .details-body {
+      margin-top: 10px;
+      padding: 10px 10px 12px;
+      border-radius: 16px;
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 1) 0, #020617 65%);
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      overflow: auto;
+    }
+
+    .stage-title-line {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+
+    .stage-title-line h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .stage-title-meta {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .stage-description {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 4px 0 10px;
+    }
+
+    .summary-line {
+      font-size: 0.78rem;
+      margin: 6px 0 4px;
+      color: var(--text-muted);
+    }
+
+    .trait-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 10px;
+    }
+
+    .trait-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      margin-bottom: 5px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, rgba(15, 23, 42, 0.96), rgba(25, 35, 71, 0.96));
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      font-size: 0.78rem;
+    }
+
+    .trait-list span.label {
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .trait-list span.value {
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .trait-list span.value.positive {
+      border-color: rgba(45, 212, 191, 0.9);
+      color: #a7f3d0;
+      background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.3) 0, rgba(15, 23, 42, 0.9) 60%);
+    }
+
+    .trait-list span.value.negative {
+      border-color: rgba(248, 113, 113, 0.9);
+      color: #fecaca;
+      background: radial-gradient(circle at top left, rgba(220, 38, 38, 0.3) 0, rgba(15, 23, 42, 0.9) 60%);
+    }
+
+    .summary-narrative {
+      font-size: 0.8rem;
+      color: var(--text-main);
+      margin: 8px 0 10px;
+      line-height: 1.45;
+    }
+
+    .summary-narrative em {
+      color: var(--accent-strong);
+      font-style: normal;
+    }
+
+    .footer-caption {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      opacity: 0.9;
+    }
+
+    .tiny-note {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .tiny-note span {
+      color: var(--accent-strong);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="nav-bar">
+      <a class="nav-action" id="back-to-core" href="#">&#8592; Back to Project Hub</a>
+      <span class="nav-context" id="projectContext">Project: loading...</span>
+    </div>
+    <header>
+      <h1>
+        Narrative Dynamics Grid
+        <span class="badge">Hero’s Journey · Character Types & Goals</span>
+      </h1>
+      <p>
+        Pick a character type, give them a goal, and watch how their
+        <strong>advantage, power, knowledge, connection,</strong> and
+        <strong>stability</strong> shift across the journey.
+      </p>
+    </header>
+
+    <div class="top-controls">
+      <div class="control-group">
+        <span class="control-label">Character Type</span>
+        <select id="character-type">
+          <option value="Protagonist" selected>Protagonist</option>
+          <option value="Antagonist">Antagonist</option>
+          <option value="Deuteragonist">Deuteragonist</option>
+          <option value="Mentor">Mentor</option>
+          <option value="Ally">Ally</option>
+          <option value="Trickster">Trickster</option>
+          <option value="Love Interest">Love Interest</option>
+          <option value="Rival">Rival</option>
+        </select>
+      </div>
+
+      <div class="control-group wide">
+        <span class="control-label">Character Goal</span>
+        <input id="character-goal" type="text" placeholder="e.g., The protagonist wants to throw a party." />
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">Hint</span>
+        <div style="font-size:0.78rem;color:var(--text-muted);padding-top:4px;max-width:260px;">
+          Each character type has its own starting pattern. Switching types swaps in their saved grid and goal.
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <section class="matrix-card">
+        <div class="matrix-header">
+          <h2>Journey × Trait Matrix</h2>
+          <span class="sub">Click a row to inspect that beat from this character’s point of view.</span>
+        </div>
+        <div class="matrix-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Hero’s Journey Stage</th>
+                <th>
+                  <div class="trait-header-label">
+                    <div class="trait-header-main">
+                      <span class="dot"></span>
+                      <span class="text">Advantage</span>
+                    </div>
+                    <span class="trait-header-sub">Advantage ↔ Disadvantage</span>
+                  </div>
+                </th>
+                <th>
+                  <div class="trait-header-label">
+                    <div class="trait-header-main">
+                      <span class="dot"></span>
+                      <span class="text">Power</span>
+                    </div>
+                    <span class="trait-header-sub">Authority ↔ Opposition</span>
+                  </div>
+                </th>
+                <th>
+                  <div class="trait-header-label">
+                    <div class="trait-header-main">
+                      <span class="dot"></span>
+                      <span class="text">Knowledge</span>
+                    </div>
+                    <span class="trait-header-sub">Knowledge ↔ Mystery</span>
+                  </div>
+                </th>
+                <th>
+                  <div class="trait-header-label">
+                    <div class="trait-header-main">
+                      <span class="dot"></span>
+                      <span class="text">Connection</span>
+                    </div>
+                    <span class="trait-header-sub">Connection ↔ Isolation</span>
+                  </div>
+                </th>
+                <th>
+                  <div class="trait-header-label">
+                    <div class="trait-header-main">
+                      <span class="dot"></span>
+                      <span class="text">Stability</span>
+                    </div>
+                    <span class="trait-header-sub">Stability ↔ Chaos</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="matrix-body">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="tiny-note">
+          Example: Protagonist goal — <span>"Throw a party."</span> · Antagonist goal — <span>"Make sure the party never happens."</span>
+        </div>
+      </section>
+
+      <aside class="details-card">
+        <div class="details-header">
+          <div class="details-title">Stage Focus</div>
+          <div class="details-chip" id="details-chip">Protagonist · Ordinary World</div>
+        </div>
+        <div class="details-body" id="stage-details">
+          <!-- Injected by JS -->
+        </div>
+        <div class="footer-caption">
+          This panel is your “internal camera” for the selected beat: how the situation feels from the character’s POV.
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const traits = [
+      {
+        key: "advantage",
+        label: "Advantage vs Disadvantage",
+        options: ["Advantage", "Disadvantage"],
+        positive: "Advantage",
+      },
+      {
+        key: "authority",
+        label: "Authority vs Opposition",
+        options: ["Authority", "Opposition"],
+        positive: "Authority",
+      },
+      {
+        key: "knowledge",
+        label: "Knowledge vs Mystery",
+        options: ["Knowledge", "Mystery"],
+        positive: "Knowledge",
+      },
+      {
+        key: "connection",
+        label: "Connection vs Isolation",
+        options: ["Connection", "Isolation"],
+        positive: "Connection",
+      },
+      {
+        key: "stability",
+        label: "Stability vs Chaos",
+        options: ["Stability", "Chaos"],
+        positive: "Stability",
+      },
+    ];
+
+    const stages = [
+      {
+        id: "call-to-adventure",
+        name: "Call to Adventure",
+        tagline: "The invitation",
+        description:
+          "Something new intrudes: an opportunity, threat, or anomaly that demands a response and exposes fault lines in their current life.",
+      },
+      {
+        id: "refusal-of-the-call",
+        name: "Refusal of the Call",
+        tagline: "Resistance and avoidance",
+        description:
+          "Fear, loyalty, comfort, or disbelief keep the character from fully committing. Pressure builds as they hesitate.",
+      },
+      {
+        id: "supernatural-aid",
+        name: "Supernatural Aid",
+        tagline: "A gift or sign",
+        description:
+          "Help beyond the ordinary arrives - an omen, artifact, ally, or inner awakening that arms the character for what's ahead.",
+      },
+      {
+        id: "crossing-first-threshold",
+        name: "The Crossing of the First Threshold",
+        tagline: "No way back",
+        description:
+          "The character steps into the unknown world or situation. Old rules weaken; new rules aren't clear yet.",
+      },
+      {
+        id: "belly-of-the-whale",
+        name: "The Belly of the Whale",
+        tagline: "Swallowed by change",
+        description:
+          "Plunged past the point of return, the character is engulfed by the new reality and must shed their old skin to continue.",
+      },
+      {
+        id: "road-of-trials",
+        name: "The Road of Trials",
+        tagline: "Tests and shaping",
+        description:
+          "A series of challenges refines the character's abilities and reveals allies and enemies through repeated pressure.",
+      },
+      {
+        id: "meeting-with-goddess",
+        name: "The Meeting with the Goddess",
+        tagline: "Sacred encounter",
+        description:
+          "The character experiences profound support, love, or insight that affirms the quest and opens a higher perspective.",
+      },
+      {
+        id: "woman-as-temptress",
+        name: "Woman as the Temptress",
+        tagline: "Seductive distraction",
+        description:
+          "Temptation to abandon the path appears, offering comfort, desire, or escape that would derail the journey.",
+      },
+      {
+        id: "atonement-with-father",
+        name: "Atonement with the Father",
+        tagline: "Reconciling authority",
+        description:
+          "A confrontation with authority or legacy—outer or inner—forces the character to redefine their power and allegiance.",
+      },
+      {
+        id: "apotheosis",
+        name: "Apotheosis",
+        tagline: "A higher state",
+        description:
+          "The character reaches a breakthrough in understanding or being, seeing the larger pattern beyond previous limits.",
+      },
+      {
+        id: "ultimate-boon",
+        name: "The Ultimate Boon",
+        tagline: "Prize secured",
+        description:
+          "The sought-after gift—knowledge, item, or transformation—is attained. It holds the power to heal, save, or change.",
+      },
+      {
+        id: "refusal-of-return",
+        name: "Refusal of the Return",
+        tagline: "Clinging to change",
+        description:
+          "The character hesitates to leave the transformed realm, uncertain that their gain will survive contact with the old world.",
+      },
+      {
+        id: "magic-flight",
+        name: "The Magic Flight",
+        tagline: "A risky escape",
+        description:
+          "Returning is perilous. Pursuit, obstacles, or collapse force improvisation as the character races toward home or stability.",
+      },
+      {
+        id: "rescue-from-without",
+        name: "Rescue from Without",
+        tagline: "Aid on return",
+        description:
+          "Helpers intervene to extract or support the character, recognizing that even transformed heroes need allies to get back.",
+      },
+      {
+        id: "crossing-return-threshold",
+        name: "The Crossing of the Return Threshold",
+        tagline: "Reentry challenge",
+        description:
+          "The character must fit the boon into the ordinary world. Integration is tested as old norms resist the new wisdom.",
+      },
+      {
+        id: "master-of-two-worlds",
+        name: "Master of the Two Worlds",
+        tagline: "Balance achieved",
+        description:
+          "The character can navigate both the ordinary and the transformed realms, translating lessons between them with agency.",
+      },
+      {
+        id: "freedom-to-live",
+        name: "Freedom to Live",
+        tagline: "Unburdened presence",
+        description:
+          "With fear of the future and regret of the past eased, the character lives in the moment, free to act without paralysis.",
+      },
+    ];
+
+    const characterTypes = [
+      "Protagonist",
+      "Antagonist",
+      "Deuteragonist",
+      "Mentor",
+      "Ally",
+      "Trickster",
+      "Love Interest",
+      "Rival",
+    ];
+
+    let currentProjectId = null;
+    const passthroughParams = {};
+
+    // Character state: type -> { goal: string, gridState: { stageId: { traitKey: value } } }
+    const characterStates = {};
+
+    let currentCharacterType = "Protagonist";
+    let activeGridState = {};
+    let activeStageId = stages[0]?.id || null;
+
+    const matrixBodyEl = document.getElementById("matrix-body");
+    const detailsEl = document.getElementById("stage-details");
+    const detailsChipEl = document.getElementById("details-chip");
+    const characterTypeEl = document.getElementById("character-type");
+    const characterGoalEl = document.getElementById("character-goal");
+    const backToCoreEl = document.getElementById("back-to-core");
+    const projectContextEl = document.getElementById("projectContext");
+
+    async function initProjectContext() {
+      currentProjectId = await ensureProjectIdOrRedirect("project_core.html");
+      if (!currentProjectId) return;
+
+      const params = new URLSearchParams(window.location.search);
+      ["sceneId", "characterId", "eventId"].forEach((key) => {
+        const val = params.get(key);
+        if (val) passthroughParams[key] = val;
+      });
+
+      if (backToCoreEl) {
+        const coreUrl = new URL("project_core.html", window.location.href);
+        coreUrl.searchParams.set("id", currentProjectId);
+        Object.entries(passthroughParams).forEach(([key, val]) => {
+          coreUrl.searchParams.set(key, val);
+        });
+        backToCoreEl.href = coreUrl.toString();
+      }
+
+      if (projectContextEl) {
+        try {
+          const projects = await window.projectStoreGetProjects();
+          const proj = projects.find((p) => p.id === currentProjectId);
+          const title = proj?.meta?.storyTitle || "(Untitled)";
+          projectContextEl.textContent = `Project: ${title}`;
+        } catch (e) {
+          projectContextEl.textContent = `Project ID: ${currentProjectId}`;
+        }
+      }
+    }
+
+    function createDefaultGridForCharacter(type) {
+      const grid = {};
+      stages.forEach((stage, index) => {
+        const ratio = stages.length > 1 ? index / (stages.length - 1) : 0;
+        grid[stage.id] = {};
+        traits.forEach((trait) => {
+          grid[stage.id][trait.key] = getDefaultValueForCharacter(type, trait.key, ratio);
+        });
+      });
+      return grid;
+    }
+
+    function getDefaultValueForCharacter(type, traitKey, ratio) {
+      // ratio: 0 (start) → 1 (end)
+
+      // Helper defaults (protagonist-style) if type not matched
+      function protagonistDefault() {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.4 ? "Disadvantage" : "Advantage";
+          case "authority":
+            return ratio < 0.7 ? "Opposition" : "Authority";
+          case "knowledge":
+            return ratio < 0.6 ? "Mystery" : "Knowledge";
+          case "connection":
+            return ratio < 0.2 ? "Isolation" : "Connection";
+          case "stability":
+            if (ratio < 0.25) return "Stability";
+            if (ratio < 0.7) return "Chaos";
+            return "Stability";
+        }
+      }
+
+      if (type === "Protagonist") {
+        return protagonistDefault();
+      }
+
+      if (type === "Antagonist") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.7 ? "Advantage" : "Disadvantage";
+          case "authority":
+            return ratio < 0.8 ? "Authority" : "Opposition";
+          case "knowledge":
+            return ratio < 0.9 ? "Knowledge" : "Mystery";
+          case "connection":
+            if (ratio > 0.3 && ratio < 0.6) return "Connection";
+            return "Isolation";
+          case "stability":
+            return ratio < 0.5 ? "Stability" : "Chaos";
+        }
+      }
+
+      if (type === "Deuteragonist") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.3 ? "Disadvantage" : "Advantage";
+          case "authority":
+            return ratio < 0.5 ? "Opposition" : "Authority";
+          case "knowledge":
+            return ratio < 0.5 ? "Mystery" : "Knowledge";
+          case "connection":
+            return ratio < 0.15 ? "Isolation" : "Connection";
+          case "stability":
+            if (ratio < 0.3) return "Stability";
+            if (ratio < 0.8) return "Chaos";
+            return "Stability";
+        }
+      }
+
+      if (type === "Mentor") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.8 ? "Advantage" : "Disadvantage";
+          case "authority":
+            return "Authority";
+          case "knowledge":
+            return "Knowledge";
+          case "connection":
+            return "Connection";
+          case "stability":
+            return ratio < 0.7 ? "Stability" : "Chaos";
+        }
+      }
+
+      if (type === "Ally") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.3 ? "Disadvantage" : "Advantage";
+          case "authority":
+            return "Opposition";
+          case "knowledge":
+            return ratio < 0.4 ? "Mystery" : "Knowledge";
+          case "connection":
+            return "Connection";
+          case "stability":
+            return ratio < 0.5 ? "Chaos" : "Stability";
+        }
+      }
+
+      if (type === "Trickster") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.5 ? "Advantage" : "Disadvantage";
+          case "authority":
+            return "Opposition";
+          case "knowledge":
+            return ratio < 0.3 || ratio > 0.8 ? "Mystery" : "Knowledge";
+          case "connection":
+            return ratio < 0.3 ? "Connection" : "Isolation";
+          case "stability":
+            return "Chaos";
+        }
+      }
+
+      if (type === "Love Interest") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.2 ? "Disadvantage" : "Advantage";
+          case "authority":
+            return "Opposition";
+          case "knowledge":
+            return ratio < 0.5 ? "Mystery" : "Knowledge";
+          case "connection":
+            return "Connection";
+          case "stability":
+            return ratio < 0.5 ? "Stability" : "Chaos";
+        }
+      }
+
+      if (type === "Rival") {
+        switch (traitKey) {
+          case "advantage":
+            return ratio < 0.5 ? "Advantage" : "Disadvantage";
+          case "authority":
+            return "Opposition";
+          case "knowledge":
+            return ratio < 0.6 ? "Knowledge" : "Mystery";
+          case "connection":
+            return ratio > 0.8 ? "Connection" : "Isolation";
+          case "stability":
+            return ratio < 0.6 ? "Stability" : "Chaos";
+        }
+      }
+
+      // Fallback: protagonist-like
+      return protagonistDefault();
+    }
+
+    function initCharacterStates() {
+      characterTypes.forEach((type) => {
+        characterStates[type] = {
+          goal: "",
+          gridState: createDefaultGridForCharacter(type),
+        };
+      });
+    }
+
+    function buildMatrix() {
+      matrixBodyEl.innerHTML = "";
+
+      stages.forEach((stage, index) => {
+        const tr = document.createElement("tr");
+        tr.dataset.stageId = stage.id;
+
+        const th = document.createElement("th");
+        const idxSpan = document.createElement("span");
+        idxSpan.className = "stage-index";
+        idxSpan.textContent = String(index + 1).padStart(2, "0");
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "stage-name";
+        nameSpan.textContent = "· " + stage.name;
+
+        const tagSpan = document.createElement("span");
+        tagSpan.className = "stage-tagline";
+        tagSpan.textContent = stage.tagline;
+
+        th.appendChild(idxSpan);
+        th.appendChild(nameSpan);
+        th.appendChild(tagSpan);
+        tr.appendChild(th);
+
+        traits.forEach((trait) => {
+          const td = document.createElement("td");
+          const select = document.createElement("select");
+
+          trait.options.forEach((opt) => {
+            const option = document.createElement("option");
+            option.value = opt;
+            option.textContent = opt;
+            select.appendChild(option);
+          });
+
+          select.value = activeGridState[stage.id][trait.key];
+
+          select.addEventListener("change", (e) => {
+            activeGridState[stage.id][trait.key] = e.target.value;
+            const activeRow = document.querySelector("#matrix-body tr.active");
+            if (activeRow && activeRow.dataset.stageId === stage.id) {
+              renderStageDetails(stage.id);
+            }
+          });
+
+          td.appendChild(select);
+          tr.appendChild(td);
+        });
+
+        tr.addEventListener("click", () => {
+          document
+            .querySelectorAll("#matrix-body tr")
+            .forEach((row) => row.classList.remove("active"));
+          tr.classList.add("active");
+          activeStageId = stage.id;
+          renderStageDetails(stage.id);
+        });
+
+        matrixBodyEl.appendChild(tr);
+      });
+
+      // Mark current active row (or first) as selected
+      let rowToActivate = Array.from(matrixBodyEl.querySelectorAll("tr")).find(
+        (row) => row.dataset.stageId === activeStageId
+      );
+      if (!rowToActivate) {
+        rowToActivate = matrixBodyEl.querySelector("tr");
+        activeStageId = rowToActivate?.dataset.stageId || null;
+      }
+      if (rowToActivate) {
+        rowToActivate.classList.add("active");
+      }
+    }
+
+    function renderStageDetails(stageId) {
+      const stage = stages.find((s) => s.id === stageId);
+      if (!stage) return;
+
+      const charType = currentCharacterType;
+      const state = activeGridState[stageId];
+      const goal = characterStates[charType]?.goal || "";
+
+      detailsChipEl.textContent = `${charType} · ${stage.name}`;
+
+      const listItems = traits
+        .map((trait) => {
+          const value = state[trait.key];
+          const isPositive = value === trait.positive;
+          return `
+            <li>
+              <span class="label">${trait.label}</span>
+              <span class="value ${isPositive ? "positive" : "negative"}">
+                ${value}
+              </span>
+            </li>
+          `;
+        })
+        .join("");
+
+      const t = state;
+
+      const narrativeSentence = `
+        At this beat, the <strong>${charType.toLowerCase()}</strong> stands in a state of
+        <em>${t.advantage.toLowerCase()}</em>,
+        aligned with <em>${t.authority.toLowerCase()}</em>,
+        moving through <em>${t.knowledge.toLowerCase()}</em>,
+        experiencing <em>${t.connection.toLowerCase()}</em>,
+        and surrounded by <em>${t.stability.toLowerCase()}</em>.
+      `;
+
+      const goalLine = goal
+        ? `Their current goal is: <strong>${goal}</strong>.`
+        : `No explicit goal set yet—type one in above to anchor their motivation.`;
+
+      detailsEl.innerHTML = `
+        <div class="stage-title-line">
+          <h3>${stage.name}</h3>
+          <div class="stage-title-meta">${stage.tagline}</div>
+        </div>
+        <p class="stage-description">${stage.description}</p>
+        <p class="summary-line">Trait snapshot for the <strong>${charType}</strong> at this moment:</p>
+        <ul class="trait-list">
+          ${listItems}
+        </ul>
+        <p class="summary-narrative">${narrativeSentence}</p>
+        <p class="summary-line">${goalLine}</p>
+      `;
+    }
+
+    function onCharacterTypeChange(newType) {
+      // Save current goal into previous type
+      if (characterStates[currentCharacterType]) {
+        characterStates[currentCharacterType].goal = characterGoalEl.value;
+      }
+
+      currentCharacterType = newType;
+
+      // Swap active grid to this type's grid
+      const state = characterStates[currentCharacterType];
+      if (!state) return;
+
+      activeGridState = state.gridState;
+      characterGoalEl.value = state.goal || "";
+
+      buildMatrix();
+      if (activeStageId) {
+        renderStageDetails(activeStageId);
+      } else if (stages.length > 0) {
+        activeStageId = stages[0].id;
+        renderStageDetails(activeStageId);
+      }
+    }
+
+    // Hook up controls
+    characterTypeEl.addEventListener("change", (e) => {
+      onCharacterTypeChange(e.target.value);
+    });
+
+    characterGoalEl.addEventListener("input", (e) => {
+      const val = e.target.value;
+      if (characterStates[currentCharacterType]) {
+        characterStates[currentCharacterType].goal = val;
+      }
+      if (activeStageId) {
+        renderStageDetails(activeStageId);
+      }
+    });
+
+    // Initial boot
+    (async function boot() {
+      await initProjectContext();
+      if (!currentProjectId) return;
+
+      initCharacterStates();
+      activeGridState = characterStates[currentCharacterType].gridState;
+      characterGoalEl.value = characterStates[currentCharacterType].goal || "";
+      buildMatrix();
+      if (stages.length > 0) {
+        activeStageId = stages[0].id;
+        renderStageDetails(activeStageId);
+      }
+    })();
+  </script>
+</body>
+</html>
+

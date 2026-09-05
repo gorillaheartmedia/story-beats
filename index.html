@@ -91,6 +91,12 @@
       font-size: 1.12em;
     }
     .project-title-link:hover { color: #3b82f6; }
+    .project-row { cursor: grab; }
+    .project-row.dragging { opacity: 0.6; }
+    .project-row.drag-over td {
+      outline: 2px dashed #7dd3fc;
+      outline-offset: -2px;
+    }
     @media (max-width:700px) {
       .container { padding: 8px 3vw 20px 3vw; }
       table, th, td { font-size: 1em;}
@@ -206,7 +212,7 @@
       color: #fffbb0;
     }
   </style>
-  <!-- <script src="project-safety.js"></script> -->
+  <script src="project-safety.js"></script>
 </head>
 <body>
   <!-- Floating Core Hub Button (returns to core, if set) -->
@@ -249,12 +255,8 @@
   </div>
   <script>
     // ------- Storage Model --------
-    function getProjects() {
-      return JSON.parse(localStorage.getItem("plotProjects") || "[]");
-    }
-    function setProjects(arr) {
-      localStorage.setItem("plotProjects", JSON.stringify(arr));
-    }
+    async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+    async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
     function nowISO() {
       return (new Date()).toISOString();
     }
@@ -268,8 +270,8 @@
     }
 
     // ------- Render Dashboard -----
-    function renderProjects() {
-      let arr = getProjects();
+    async function renderProjects() {
+      let arr = await getProjectsAsync();
       let tb = document.getElementById("projectRows");
       tb.innerHTML = "";
       if (!arr.length) {
@@ -280,7 +282,7 @@
         let t = p.meta?.storyTitle || "(Untitled)";
         let type = p.meta?.type || "";
         let lm = formatDate(p.lastModified || "");
-        tb.innerHTML += `<tr>
+        tb.innerHTML += `<tr class="project-row" data-id="${p.id}" draggable="true">
           <td><span class="project-title-link" onclick="openProject('${p.id}')">${t}</span></td>
           <td>${type}</td>
           <td>${lm}</td>
@@ -291,6 +293,46 @@
           </td>
         </tr>`;
       });
+      addProjectDragHandlers();
+    }
+
+    let draggingProjectId = null;
+    function addProjectDragHandlers() {
+      const rows = Array.from(document.querySelectorAll(".project-row"));
+      rows.forEach(row => {
+        row.addEventListener("dragstart", function(e) {
+          draggingProjectId = row.dataset.id || null;
+          row.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+        });
+        row.addEventListener("dragend", function() {
+          draggingProjectId = null;
+          rows.forEach(r => r.classList.remove("drag-over"));
+          row.classList.remove("dragging");
+        });
+        row.addEventListener("dragover", function(e) {
+          e.preventDefault();
+          row.classList.add("drag-over");
+          e.dataTransfer.dropEffect = "move";
+        });
+        row.addEventListener("dragleave", function() {
+          row.classList.remove("drag-over");
+        });
+        row.addEventListener("drop", async function(e) {
+          e.preventDefault();
+          row.classList.remove("drag-over");
+          const targetId = row.dataset.id;
+          if (!draggingProjectId || !targetId || draggingProjectId === targetId) return;
+          let arr = await getProjectsAsync();
+          const from = arr.findIndex(p => p.id === draggingProjectId);
+          const to = arr.findIndex(p => p.id === targetId);
+          if (from === -1 || to === -1) return;
+          const moved = arr.splice(from, 1)[0];
+          arr.splice(to, 0, moved);
+          await setProjectsAsync(arr);
+          renderProjects();
+        });
+      });
     }
 
     // ------- Open, Create, Rename, Delete, Export -------
@@ -299,7 +341,7 @@
       localStorage.setItem("currentProjectId", id);
       window.location.href = "project_core.html?id=" + encodeURIComponent(id);
     }
-    function newProjectPrompt() {
+    async function newProjectPrompt() {
       let name = prompt("Project title?");
       if (name === null) return;
       name = name.trim() || "Untitled";
@@ -310,15 +352,15 @@
         beats: [],
         lastModified: nowISO()
       };
-      let arr = getProjects();
+      let arr = await getProjectsAsync();
       arr.unshift(proj); // newest at top
-      setProjects(arr);
+      await setProjectsAsync(arr);
       sessionStorage.setItem("currentPlotProjectId", proj.id);
       localStorage.setItem("currentProjectId", proj.id);
       window.location.href = "project_core.html?id=" + encodeURIComponent(proj.id);
     }
-    function renameProjectPrompt(id) {
-      let arr = getProjects();
+    async function renameProjectPrompt(id) {
+      let arr = await getProjectsAsync();
       let idx = arr.findIndex(p => p.id === id);
       if (idx === -1) return;
       let cur = arr[idx];
@@ -326,20 +368,20 @@
       if (name === null) return;
       arr[idx].meta.storyTitle = name.trim() || "Untitled";
       arr[idx].lastModified = nowISO();
-      setProjects(arr);
+      await setProjectsAsync(arr);
       renderProjects();
     }
-    function deleteProjectPrompt(id) {
+    async function deleteProjectPrompt(id) {
       if (!confirm("Delete this project? This cannot be undone.")) return;
-      let arr = getProjects();
+      let arr = await getProjectsAsync();
       let idx = arr.findIndex(p => p.id === id);
       if (idx === -1) return;
       arr.splice(idx, 1);
-      setProjects(arr);
+      await setProjectsAsync(arr);
       renderProjects();
     }
-    function exportProject(id) {
-      let arr = getProjects();
+    async function exportProject(id) {
+      let arr = await getProjectsAsync();
       let p = arr.find(x => x.id === id);
       if (!p) return;
       const data = JSON.stringify(p, null, 2);
@@ -357,22 +399,22 @@
     }
 
     // ------- Import Project -------
-    document.getElementById('fileInput').addEventListener('change', function(ev) {
+    document.getElementById('fileInput').addEventListener('change', async function(ev) {
       const file = this.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         try {
           const loaded = JSON.parse(e.target.result);
           if (!loaded.meta || !loaded.beats || !loaded.id) throw "Invalid file";
-          let arr = getProjects();
+          let arr = await getProjectsAsync();
           // Avoid duplicate IDs
           let newId = loaded.id;
           while (arr.find(p => p.id === newId)) newId = uuid();
           loaded.id = newId;
           loaded.lastModified = nowISO();
           arr.unshift(loaded);
-          setProjects(arr);
+          await setProjectsAsync(arr);
           renderProjects();
           alert("Project imported!");
         } catch (err) {
@@ -396,10 +438,10 @@
     }
 
     // ------ Modal for No Project Selected ------
-    function openProjectModal() {
+    async function openProjectModal() {
       const modal = document.getElementById('projectModalBg');
       const list = document.getElementById('modalProjectList');
-      const projects = getProjects();
+      const projects = await getProjectsAsync();
       list.innerHTML = '';
       if (projects.length) {
         projects.forEach(proj => {
@@ -422,7 +464,7 @@
       modal.style.display = 'flex';
     }
 
-    function modalCreateProject() {
+    async function modalCreateProject() {
       let name = document.getElementById('modalProjName').value.trim() || "Untitled";
       let type = document.getElementById('modalProjType').value.trim() || "Novel";
       let proj = {
@@ -431,9 +473,9 @@
         beats: [],
         lastModified: nowISO()
       };
-      let arr = getProjects();
+      let arr = await getProjectsAsync();
       arr.unshift(proj);
-      setProjects(arr);
+      await setProjectsAsync(arr);
       sessionStorage.setItem("currentPlotProjectId", proj.id);
       localStorage.setItem("currentProjectId", proj.id);
       window.location.href = "project_core.html?id=" + encodeURIComponent(proj.id);
@@ -454,3 +496,5 @@
   </script>
 </body>
 </html>
+
+

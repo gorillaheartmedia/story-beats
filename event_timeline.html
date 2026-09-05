@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Event Timeline</title>
@@ -154,7 +155,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -163,9 +164,7 @@
     let params = new URLSearchParams(window.location.search);
     return params.get(name);
   }
-  function getProjects() {
-    return JSON.parse(localStorage.getItem("plotProjects") || "[]");
-  }
+  async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
 
   let projectId = getQueryParam("id"),
       project = null,
@@ -175,17 +174,17 @@
       locations = [],
       characters = [];
 
-  function loadProject() {
+  async function loadProject() {
     if (!projectId) {
       alert("No project ID.");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
       return;
     }
-    let arr = getProjects();
+    let arr = await getProjectsAsync();
     project = arr.find(p => p.id === projectId);
     if (!project) {
       alert("Project not found.");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
       return;
     }
     events = project.events || [];
@@ -413,3 +412,6 @@
 
 </body>
 </html>
+
+
+

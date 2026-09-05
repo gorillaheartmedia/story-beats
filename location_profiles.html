@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Location Manager</title>
@@ -20,6 +21,9 @@
     .search-bar input, .search-bar select { padding:7px 11px; border-radius:7px; border:1.1px solid #284687; background: #19306a44; color: #e8ecfa; font-size:1.04em; margin-right:12px;}
     .loc-list { display: flex; flex-wrap: wrap; gap: 17px;}
     .loc-card { background: rgba(255,255,255,0.13); border: 2px solid #2953a950; border-radius: 13px; box-shadow: 0 2px 12px #0a194e32; min-width: 250px; max-width: 340px; flex: 1 1 260px; padding: 0 0 18px 0; margin-bottom:18px; overflow:hidden; display:flex; flex-direction:column;}
+    .loc-card { cursor: grab; }
+    .loc-card.dragging { opacity: 0.6; }
+    .loc-card.drag-over { outline: 2px dashed #7dd3fc; outline-offset: -6px; }
     .loc-img-bar { width:100%; height:110px; background:#18357b; overflow:hidden; display:flex; align-items:center; justify-content:center;}
     .loc-img-bar img { max-width:100%; max-height:100%; object-fit:cover; display:block;}
     .loc-card .loc-body { padding: 13px 17px 0 17px; flex:1; display:flex; flex-direction:column;}
@@ -28,7 +32,10 @@
     .loc-tags { display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 7px 0;}
     .loc-tag { background: #2959de44; border-radius: 5px; padding: 2px 9px; font-size: .96em; color: #bee1fd; border: 1px solid #3b82f655; font-weight: 500;}
     .loc-desc { color:#e8ecfa; font-size:1em; margin-bottom:7px;}
+    .loc-signif { color:#c7ecff; font-size:.98em; margin-bottom:7px;}
     .loc-scenes { margin:4px 0 0 0; font-size:.97em; color:#b9e6ff;}
+    .loc-attachment { margin:6px 0 0 0; font-size:.97em; color:#b9e6ff;}
+    .loc-attachment a { color:#7dd3fc; text-decoration: underline; }
     .loc-actions { margin-top:10px; display:flex; gap:8px;}
     .loc-actions button { padding:5px 13px; border-radius:7px; border:none; font-weight:600; background: linear-gradient(92deg, #2671f2, #2959de 90%); color:#fff; cursor:pointer; font-size:.98em; transition: background .14s, color .14s; box-shadow: 0 1px 4px #10399a24;}
     .loc-actions button:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
@@ -47,8 +54,11 @@
     .modal-actions button { background: linear-gradient(92deg, #2671f2, #2959de 90%); color: #fff; border: none; border-radius: 7px; font-weight: 600; font-size: 1.01em; padding: 7px 18px; margin-left: 9px; cursor: pointer; transition: background .15s, color .13s;}
     .modal-actions button:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff;}
     .img-btns {display:flex; gap:7px; margin-top:6px;}
+    .img-drop-zone {border: 1.2px dashed #3b82f666; border-radius: 9px; padding: 8px 10px; background: #19306a22;}
+    .img-drop-zone.dragover {border-color: #60a5fa; background: #1a357244;}
     .loc-img-preview {width: 100%; max-width: 320px; max-height: 110px; margin-top: 7px; margin-bottom: 7px; border-radius: 7px;}
     .img-url-input {width: calc(100% - 40px);}
+    .img-drop-hint {margin-top: 6px; font-size: .95em; color: #9ad7ff;}
     @media (max-width:700px) { .container { padding: 10px 1vw 20px 1vw; } .loc-list { gap:8px;} .loc-card { min-width: 150px; padding: 0;} .modal { padding: 8px 2vw;}}
 .fab-research {
   position: fixed;
@@ -103,7 +113,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -112,7 +122,7 @@
   <div class="container">
     <div class="top-bar">
       <div>
-        <button onclick="window.location.href='dashboard.html'" class="dashboard-btn">← Dashboard</button>
+        <button onclick="window.location.href='project_core.html'" class="dashboard-btn">← Dashboard</button>
         <button onclick="window.location.href='scene_manager.html?id=' + encodeURIComponent(projectId)" class="scene-btn">Scene Manager</button>
       </div>
       <div class="btns">
@@ -147,17 +157,33 @@
         <input id="locTagInput" type="text" maxlength="18" placeholder="Add tag & press Enter"/>
       </label>
       <label>Description/Notes
-        <textarea id="locDesc" rows="3" maxlength="180" placeholder="Describe or note this location"></textarea>
+        <textarea id="locDesc" rows="3" maxlength="500" placeholder="Describe or note this location"></textarea>
+      </label>
+      <label>Significance
+        <textarea id="locSignificance" rows="3" maxlength="500" placeholder="Why this place matters"></textarea>
       </label>
       <label>Image
-        <div class="img-btns">
-          <input id="locImgFile" type="file" accept="image/*" style="display:none;">
-          <button type="button" onclick="document.getElementById('locImgFile').click()">Upload Image</button>
-          <button type="button" onclick="addImgFromURL()">From URL</button>
-          <button type="button" onclick="clearImgPreview()">Remove</button>
+        <div class="img-drop-zone" id="locImgDropZone">
+          <div class="img-btns">
+            <input id="locImgFile" type="file" accept="image/*" style="display:none;">
+            <button type="button" onclick="document.getElementById('locImgFile').click()">Upload Image</button>
+            <button type="button" onclick="addImgFromURL()">From URL</button>
+            <button type="button" onclick="clearImgPreview()">Remove</button>
+          </div>
+          <input id="locImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
+          <img id="locImgPreview" class="loc-img-preview" style="display:none;">
+          <div id="locImgDropHint" class="img-drop-hint">Drag &amp; drop an image here (optional)</div>
         </div>
-        <input id="locImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
-        <img id="locImgPreview" class="loc-img-preview" style="display:none;">
+      </label>
+      <label>Attachment
+        <div class="img-drop-zone">
+          <div class="img-btns">
+            <input id="locFileInput" type="file" style="display:none;">
+            <button type="button" onclick="document.getElementById('locFileInput').click()">Upload File</button>
+            <button type="button" onclick="clearAttachment()">Remove</button>
+          </div>
+          <div id="locAttachmentInfo" class="img-drop-hint">No attachment</div>
+        </div>
       </label>
       <div class="modal-actions">
         <button onclick="saveLoc()">Save</button>
@@ -168,15 +194,15 @@
   <script>
     // -- Project Data Handling --
     function getQueryParam(name) { let params = new URLSearchParams(window.location.search); return params.get(name);}
-    function getProjects() { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
-    function setProjects(arr) { localStorage.setItem("plotProjects", JSON.stringify(arr)); }
+    async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+    async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
     let projectId = getQueryParam("id"), project=null, locations=[], scenes=[], types=[], allTags=[];
-    let editingIdx = null, modalTags=[], modalImg=null;
-    function loadProject() {
-      if (!projectId) { alert("No project ID."); window.location.href = "dashboard.html"; return; }
-      let arr = getProjects();
+    let editingIdx = null, modalTags=[], modalImg=null, modalAttachment=null;
+    async function loadProject() {
+      if (!projectId) { alert("No project ID."); window.location.href = "project_core.html"; return; }
+      let arr = await getProjectsAsync();
       project = arr.find(p => p.id === projectId);
-      if (!project) { alert("Project not found."); window.location.href = "dashboard.html"; return; }
+      if (!project) { alert("Project not found."); window.location.href = "project_core.html"; return; }
       if (!project.locations) project.locations = [];
       if (!project.scenes) project.scenes = [];
       locations = project.locations;
@@ -184,11 +210,20 @@
       document.getElementById('projTitle').textContent = "Location Manager: " + (project.meta.storyTitle || "Untitled");
       renderLocs();
     }
-    function saveProject() {
+    async function saveProject() {
+      if (!project) {
+        await loadProject();
+        if (!project) return false;
+      }
       project.locations = locations;
-      let arr = getProjects();
+      let arr = await getProjectsAsync();
       let idx = arr.findIndex(p => p.id === projectId);
-      if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; setProjects(arr);}
+      if (idx !== -1) {
+        project.lastModified = (new Date()).toISOString();
+        arr[idx] = project;
+        return await setProjectsAsync(arr);
+      }
+      return true;
     }
 
     // --- Modal ---
@@ -200,22 +235,57 @@
       modalTags = idx==null ? [] : (locations[idx].tags ? [...locations[idx].tags] : []);
       renderModalTags();
       document.getElementById('locDesc').value = idx==null ? "" : (locations[idx].desc || "");
+      document.getElementById('locSignificance').value = idx==null ? "" : (locations[idx].significance || locations[idx].signifigance || "");
       modalImg = idx==null ? null : (locations[idx].img || null);
+      modalAttachment = idx==null ? null : (locations[idx].attachment || null);
       updateImgPreview();
+      updateAttachmentInfo();
       document.getElementById('modalBack').style.display = "";
     }
-    function closeModal() { editingIdx = null; document.getElementById('modalBack').style.display = "none"; document.getElementById("locImgURLInput").style.display = "none"; }
-    function saveLoc() {
+    function closeModal() {
+      editingIdx = null;
+      document.getElementById('modalBack').style.display = "none";
+      document.getElementById("locImgURLInput").style.display = "none";
+      document.getElementById("locFileInput").value = "";
+    }
+    async function saveLoc() {
       let name = document.getElementById('locName').value.trim();
       let type = document.getElementById('locType').value.trim();
       let tags = modalTags.slice();
       let desc = document.getElementById('locDesc').value.trim();
+      let significance = document.getElementById('locSignificance').value.trim();
       let img = modalImg;
+      let attachment = modalAttachment;
       if (!name) return alert("Name required.");
-      let obj = { name, type, tags, desc, img };
-      if (editingIdx==null) { locations.push(obj);}
+      let obj = { name, type, tags, desc, significance, img, attachment };
+      if (editingIdx==null) { locations.push(obj); }
       else { locations[editingIdx] = obj; }
-      saveProject(); renderLocs(); closeModal();
+      if (!await saveProject()) {
+        if (modalAttachment && modalAttachment.data && modalAttachment.data.startsWith("data:") && confirm("Storage is full. Save without the attachment?")) {
+          obj.attachment = null;
+          modalAttachment = null;
+          if (editingIdx==null) { locations[locations.length - 1] = obj; }
+          else { locations[editingIdx] = obj; }
+          if (!await saveProject()) {
+            alert("Storage is still full. Remove other images or data, then try again.");
+            return;
+          }
+        } else if (modalImg && modalImg.startsWith("data:") && confirm("Storage is full. Save without the image?")) {
+          obj.img = null;
+          modalImg = null;
+          if (editingIdx==null) { locations[locations.length - 1] = obj; }
+          else { locations[editingIdx] = obj; }
+          if (!await saveProject()) {
+            alert("Storage is still full. Remove other images or data, then try again.");
+            return;
+          }
+        } else {
+          alert("Storage is full. Try smaller files or use external URLs.");
+          return;
+        }
+      }
+      renderLocs();
+      closeModal();
     }
     // Modal tags
     function renderModalTags() {
@@ -238,18 +308,61 @@
       }
     });
     // Modal image
-    document.getElementById("locImgFile").addEventListener("change", function(ev){
+    const MAX_IMAGE_DIM = 1400;
+    const MAX_IMAGE_DATA_URL = 900000;
+    function loadImageFile(file, done) {
+      const reader = new FileReader();
+      reader.onload = function(e){ done(e.target.result); };
+      reader.readAsDataURL(file);
+    }
+    function compressDataUrl(dataUrl, done) {
+      const img = new Image();
+      img.onload = function() {
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(w, h));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.75);
+        done(compressed);
+      };
+      img.onerror = function(){ done(null); };
+      img.src = dataUrl;
+    }
+    function setModalImgFromFile(file) {
+      if (!file) return;
+      loadImageFile(file, function(dataUrl){
+        compressDataUrl(dataUrl, function(compressed){
+          const finalImg = compressed || dataUrl;
+          if (!finalImg) { alert("Could not load image."); return; }
+          if (finalImg.length > MAX_IMAGE_DATA_URL) {
+            alert("Image too large for storage. Try a smaller image or use URL.");
+            return;
+          }
+          modalImg = finalImg;
+          updateImgPreview();
+        });
+      });
+    }
+    document.getElementById("locImgFile").addEventListener("change", function(){
       const file = this.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e){ modalImg = e.target.result; updateImgPreview(); };
-      reader.readAsDataURL(file);
+      setModalImgFromFile(file);
       this.value = '';
     });
     function updateImgPreview() {
       const img = document.getElementById("locImgPreview");
-      if (modalImg) { img.src = modalImg; img.style.display = ""; }
-      else { img.style.display = "none"; }
+      const hint = document.getElementById("locImgDropHint");
+      if (modalImg) {
+        img.src = modalImg;
+        img.style.display = "";
+        hint.style.display = "none";
+      } else {
+        img.style.display = "none";
+        hint.style.display = "";
+      }
     }
     function addImgFromURL() {
       document.getElementById("locImgURLInput").style.display = "";
@@ -257,13 +370,66 @@
     }
     document.getElementById("locImgURLInput").addEventListener("keydown", function(e){
       if (e.key === "Enter" && this.value.trim()) {
-        modalImg = this.value.trim();
+        const val = this.value.trim();
+        if (val.startsWith("data:") && val.length > MAX_IMAGE_DATA_URL) {
+          alert("Image data is too large for storage. Use a smaller image or a URL.");
+          return;
+        }
+        modalImg = val;
         updateImgPreview();
         this.value = "";
         this.style.display = "none";
       }
     });
     function clearImgPreview() { modalImg = null; updateImgPreview(); document.getElementById("locImgURLInput").style.display = "none"; }
+    const locImgDropZone = document.getElementById("locImgDropZone");
+    locImgDropZone.addEventListener("dragover", function(e){
+      e.preventDefault();
+      locImgDropZone.classList.add("dragover");
+    });
+    locImgDropZone.addEventListener("dragleave", function(){
+      locImgDropZone.classList.remove("dragover");
+    });
+    locImgDropZone.addEventListener("drop", function(e){
+      e.preventDefault();
+      locImgDropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (!file || !file.type.startsWith("image/")) return;
+      setModalImgFromFile(file);
+    });
+    // Modal attachment
+    const MAX_ATTACHMENT_DATA_URL = 1500000;
+    function setAttachmentFromFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        if (dataUrl && dataUrl.length > MAX_ATTACHMENT_DATA_URL) {
+          alert("Attachment too large for storage. Try a smaller file.");
+          return;
+        }
+        modalAttachment = { name: file.name, type: file.type || "application/octet-stream", data: dataUrl };
+        updateAttachmentInfo();
+      };
+      reader.readAsDataURL(file);
+    }
+    function updateAttachmentInfo() {
+      const info = document.getElementById("locAttachmentInfo");
+      if (modalAttachment && modalAttachment.name && modalAttachment.data) {
+        info.innerHTML = 'Attached: <a href="' + modalAttachment.data + '" download="' + modalAttachment.name + '">' + modalAttachment.name + "</a>";
+      } else if (modalAttachment && modalAttachment.name) {
+        info.textContent = "Attached: " + modalAttachment.name;
+      } else {
+        info.textContent = "No attachment";
+      }
+    }
+    function clearAttachment() { modalAttachment = null; updateAttachmentInfo(); }
+    document.getElementById("locFileInput").addEventListener("change", function(){
+      const file = this.files[0];
+      if (!file) return;
+      setAttachmentFromFile(file);
+      this.value = "";
+    });
 
     // --- List + Filters ---
     function renderLocs() {
@@ -295,8 +461,16 @@
             (tagF && !(l.tags||[]).includes(tagF))) return;
         let card = document.createElement("div");
         card.className = "loc-card";
+        card.dataset.index = i;
+        card.draggable = true;
         let imgBar = l.img ? `<div class="loc-img-bar"><img src="${l.img}" alt="Location Image"></div>` : "";
         let tagsHtml = (l.tags||[]).map(t=>`<span class="loc-tag">${t}</span>`).join("");
+        let signifText = l.significance || l.signifigance || "";
+        let signifHtml = signifText ? `<div class="loc-signif"><b>Significance:</b> ${signifText}</div>` : "";
+        let attachmentHtml = "";
+        if (l.attachment && l.attachment.name && l.attachment.data) {
+          attachmentHtml = `<div class="loc-attachment"><b>Attachment:</b> <a href="${l.attachment.data}" download="${l.attachment.name}">${l.attachment.name}</a></div>`;
+        }
         // Show scenes at this location:
         let theseScenes = scenes.filter(s=>s.location===l.name);
         let scenesHtml = theseScenes.length ?
@@ -307,17 +481,53 @@
             <div class="loc-type">${l.type||""}</div>
             <div class="loc-tags">${tagsHtml}</div>
             <div class="loc-desc">${l.desc||""}</div>
+            ${signifHtml}
+            ${attachmentHtml}
             ${scenesHtml}
             <div class="loc-actions">
               <button onclick="showLocModal(${i})">Edit</button>
               <button class="del-btn" onclick="deleteLoc(${i})">Delete</button>
             </div>
           </div>`;
+        card.addEventListener("dragstart", function(e) {
+          draggingLocIndex = parseInt(card.dataset.index, 10);
+          card.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+        });
+        card.addEventListener("dragend", function() {
+          draggingLocIndex = null;
+          card.classList.remove("dragging");
+          document.querySelectorAll(".loc-card.drag-over").forEach(el => el.classList.remove("drag-over"));
+        });
+        card.addEventListener("dragover", function(e) {
+          e.preventDefault();
+          card.classList.add("drag-over");
+          e.dataTransfer.dropEffect = "move";
+        });
+        card.addEventListener("dragleave", function() {
+          card.classList.remove("drag-over");
+        });
+        card.addEventListener("drop", async function(e) {
+          e.preventDefault();
+          card.classList.remove("drag-over");
+          const targetIndex = parseInt(card.dataset.index, 10);
+          if (draggingLocIndex == null || targetIndex === draggingLocIndex) return;
+          const moved = locations.splice(draggingLocIndex, 1)[0];
+          locations.splice(targetIndex, 0, moved);
+          await saveProject();
+          renderLocs();
+        });
         list.appendChild(card);
       });
     }
     let activeTagFilter = "";
-    function deleteLoc(idx) { if (!confirm("Delete this location?")) return; locations.splice(idx, 1); saveProject(); renderLocs(); }
+    let draggingLocIndex = null;
+    async function deleteLoc(idx) {
+      if (!confirm("Delete this location?")) return;
+      locations.splice(idx, 1);
+      await saveProject();
+      renderLocs();
+    }
     // --- Export/Import
     function exportLocs() {
       const data = JSON.stringify(locations, null, 2);
@@ -333,16 +543,16 @@
         URL.revokeObjectURL(link.href);
       }, 100);
     }
-    document.getElementById('fileInput').addEventListener('change', function(ev) {
+    document.getElementById('fileInput').addEventListener('change', async function(ev) {
       const file = this.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         try {
           const loaded = JSON.parse(e.target.result);
           if (!Array.isArray(loaded)) throw "Invalid file";
           locations = loaded;
-          saveProject();
+          await saveProject();
           renderLocs();
           alert("Locations imported!");
         } catch (err) {
@@ -357,3 +567,6 @@
   </script>
 </body>
 </html>
+
+
+

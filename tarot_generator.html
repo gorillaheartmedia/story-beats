@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Tarot Deck Selector</title>
@@ -186,7 +187,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -239,8 +240,8 @@
       const params = new URLSearchParams(window.location.search);
       return params.get(name);
     }
-    function getProjects() {
-      try { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
+    async function getProjectsAsync() {
+      try { return await window.projectStoreGetProjects(); }
       catch(e){ return []; }
     }
     function safeText(s) {
@@ -256,7 +257,7 @@
     if (projectId) sessionStorage.setItem("currentPlotProjectId", projectId);
 
     // Try to show project title if we have it
-    (function renderProjectPill(){
+    (async function renderProjectPill(){
       const pill = document.getElementById("projPill");
       const echo = document.getElementById("idEcho");
       if (!projectId) {
@@ -264,7 +265,7 @@
         echo.textContent = "";
         return;
       }
-      const projects = getProjects();
+      const projects = await getProjectsAsync();
       const proj = projects.find(p => p.id === projectId);
       if (proj) {
         pill.textContent = proj.title ? ("Project: " + proj.title) : ("Project ID: " + projectId);
@@ -291,7 +292,7 @@
 
     // Optional: jump to dashboard
     document.getElementById("backDashboardBtn").addEventListener("click", () => {
-      let url = "dashboard.html";
+      let url = "project_core.html";
       if (projectId) url += "?id=" + encodeURIComponent(projectId);
       location.href = url;
     });
@@ -307,3 +308,5 @@
   </script>
 </body>
 </html>
+
+

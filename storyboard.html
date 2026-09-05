@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Storyboard</title>
@@ -53,6 +54,27 @@
       flex-wrap: wrap;
       gap: 10px;
     }
+    .view-toggle {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: 8px;
+    }
+    .view-toggle button {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #2a4a8a;
+      background: #162a5a;
+      color: #bfe0ff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .14s, color .14s, border .14s;
+    }
+    .view-toggle button.active {
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border-color: #3b82f6;
+    }
     .filter-bar { margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 1em; color: #b9d8fc;}
     .filter-bar label, .filter-bar select, .filter-bar input { margin-right: 10px; }
     .filter-bar .tag-filter {
@@ -61,6 +83,94 @@
     .filter-bar .tag-filter.active { background: #60a5fa; color: #18357b;}
     .scenes-grid {
       display: flex; flex-wrap: wrap; gap: 22px; margin-top: 16px;
+    }
+    .scenes-grid.flow {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      scroll-snap-type: x proximity;
+    }
+    .scenes-grid.flow .scene-card {
+      min-width: 260px;
+      max-width: 320px;
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
+    .scenes-grid.flow .scene-card::after {
+      content: "→";
+      position: absolute;
+      right: -16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.2em;
+      color: #6fb2ff;
+    }
+    .scenes-grid.flow .scene-card:last-child::after {
+      content: "";
+    }
+    .scene-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 70px;
+      color: #9ec6ff;
+      font-weight: 600;
+    }
+    .scene-connector .arrow {
+      font-size: 1.4em;
+      opacity: 0.9;
+    }
+    .scene-connector .transition-note {
+      max-width: 120px;
+      font-size: 0.85em;
+      text-align: center;
+      color: #cfe6ff;
+      background: #1c3d7a;
+      border: 1px solid #2b5ab1;
+      border-radius: 8px;
+      padding: 4px 6px;
+    }
+    .scene-connector .transition-actions {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .scene-connector .transition-add {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px dashed #4bbcff;
+      color: #aee5ff;
+      font-weight: 700;
+      cursor: pointer;
+      background: #284687;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .scene-connector .transition-add:hover { background: #2b5ab1; }
+    .scene-connector .transition-clear {
+      background: none;
+      border: none;
+      color: #f8b4b4;
+      cursor: pointer;
+      font-size: 1em;
+      padding: 0;
+    }
+    .scene-connector .transition-clear:hover { color: #ff6b6b; }
+    .scene-seq {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      background: #163b75;
+      color: #bfe0ff;
+      border: 1px solid #2e5bb3;
+      border-radius: 999px;
+      font-size: 0.85em;
+      padding: 2px 8px;
+      z-index: 2;
     }
     .scene-card {
       background: rgba(255,255,255,0.13);
@@ -78,6 +188,46 @@
       overflow: hidden;
       display: flex; flex-direction: column;
     }
+    .scene-cues {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .cue-pill {
+      background: #1c3d7a;
+      border: 1px solid #2b5ab1;
+      color: #cfe6ff;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.85em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cue-pill button {
+      background: none;
+      border: none;
+      color: #f8b4b4;
+      cursor: pointer;
+      font-size: 1em;
+      padding: 0;
+    }
+    .cue-pill button:hover { color: #ff6b6b; }
+    .cue-add {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px dashed #4bbcff;
+      color: #aee5ff;
+      font-weight: 700;
+      cursor: pointer;
+      background: #284687;
+    }
+    .cue-add:hover { background: #2b5ab1; }
     .scene-card .scene-img-bar {
       width: 100%; height: 140px;
       background: #18357b;
@@ -224,14 +374,14 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
 </head>
 <body>
   <div class="container">
-    <button onclick="window.location.href='dashboard.html'" class="dashboard-btn" style="margin-bottom:18px; margin-top:-6px;">
+    <button onclick="window.location.href='project_core.html'" class="dashboard-btn" style="margin-bottom:18px; margin-top:-6px;">
       ← Back to Dashboard
     </button>
 <div class="storyboard-header">
@@ -243,6 +393,10 @@
     <button class="add-scene-btn" onclick="window.location.href='scene_manager.html?id=' + encodeURIComponent(projectId)">
       Go to Scene Manager
     </button>
+    <span class="view-toggle">
+      <button type="button" id="gridViewBtn" class="active" onclick="setView('grid')">Grid</button>
+      <button type="button" id="flowViewBtn" onclick="setView('flow')">Flow</button>
+    </span>
     <button class="export-btn" onclick="exportScenes()">Export</button>
     <button class="import-btn" onclick="document.getElementById('fileInput').click()">Import</button>
     <input type="file" id="fileInput" style="display:none" accept=".json"/>
@@ -319,27 +473,24 @@
       let params = new URLSearchParams(window.location.search);
       return params.get(name);
     }
-    function getProjects() {
-      return JSON.parse(localStorage.getItem("plotProjects") || "[]");
-    }
-    function setProjects(arr) {
-      localStorage.setItem("plotProjects", JSON.stringify(arr));
-    }
+    async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+    async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
     let projectId = getQueryParam("id");
     let project = null;
     let scenes = [];
     let beats = [];
-    function loadProject() {
+    let viewMode = "grid";
+    async function loadProject() {
       if (!projectId) {
         alert("No project ID. Returning to dashboard.");
-        window.location.href = "dashboard.html";
+        window.location.href = "project_core.html";
         return;
       }
-      let arr = getProjects();
+      let arr = await getProjectsAsync();
       project = arr.find(p => p.id === projectId);
       if (!project) {
         alert("Project not found. Returning to dashboard.");
-        window.location.href = "dashboard.html";
+        window.location.href = "project_core.html";
         return;
       }
       if (!project.scenes) project.scenes = [];
@@ -348,14 +499,14 @@
       document.getElementById('projTitle').textContent = "Storyboard: " + (project.meta.storyTitle || "Untitled");
       renderBeatOptions();
     }
-    function saveProject() {
+    async function saveProject() {
       project.scenes = scenes;
-      let arr = getProjects();
+      let arr = await getProjectsAsync();
       let idx = arr.findIndex(p => p.id === projectId);
       if (idx !== -1) {
         project.lastModified = (new Date()).toISOString();
         arr[idx] = project;
-        setProjects(arr);
+        await setProjectsAsync(arr);
       }
     }
 
@@ -500,6 +651,13 @@
 
     // --- Scene Card Logic + Filters
     let activeTagFilter = "";
+    function setView(mode) {
+      viewMode = mode === "flow" ? "flow" : "grid";
+      const grid = document.getElementById("scenesGrid");
+      grid.classList.toggle("flow", viewMode === "flow");
+      document.getElementById("gridViewBtn").classList.toggle("active", viewMode === "grid");
+      document.getElementById("flowViewBtn").classList.toggle("active", viewMode === "flow");
+    }
     function renderScenes() {
       const grid = document.getElementById('scenesGrid');
       grid.innerHTML = "";
@@ -554,11 +712,20 @@
         // Scene color bar and image
         let colorBar = `<div class="scene-color-bar" style="background:${s.color||'#60a5fa'}"></div>`;
         let imgBar = s.img ? `<div class="scene-img-bar"><img src="${s.img}" alt="Scene Image"></div>` : "";
+        const cues = Array.isArray(s.cues) ? s.cues : [];
+        const cuesHtml = cues.map((c, ci) =>
+          `<span class="cue-pill">${c}<button onclick="removeCue(${i}, ${ci})">x</button></span>`
+        ).join("");
         card.innerHTML = colorBar + imgBar + `
+          <div class="scene-seq">#${i + 1}</div>
           <div class="scene-body">
             <h2>${s.title || "<i>(Untitled)</i>"}</h2>
             <div class="scene-summary">${s.summary || ""}</div>
             <div class="scene-tags">${(s.tags||[]).map(t=>`<span class="scene-tag">${t}</span>`).join("")}</div>
+            <div class="scene-cues">
+              ${cuesHtml}
+              <span class="cue-add" title="Add stage cue" onclick="addCue(${i})">+</span>
+            </div>
             <div class="scene-status">${s.status||"Draft"}</div>
             <div class="scene-actions">
               <button onclick="showSceneModal(${i})">Edit</button>
@@ -568,9 +735,69 @@
           </div>
         `;
         grid.appendChild(card);
+        if (viewMode === "flow" && i < filtered.length - 1) {
+          const connector = document.createElement("div");
+          connector.className = "scene-connector";
+          const arrow = document.createElement("div");
+          arrow.className = "arrow";
+          arrow.textContent = "→";
+          const actions = document.createElement("div");
+          actions.className = "transition-actions";
+          const addBtn = document.createElement("button");
+          addBtn.className = "transition-add";
+          addBtn.textContent = "+";
+          addBtn.title = "Add transition note";
+          addBtn.onclick = () => addTransition(i);
+          actions.appendChild(addBtn);
+          if (s.transitionNote) {
+            const note = document.createElement("div");
+            note.className = "transition-note";
+            note.textContent = s.transitionNote;
+            note.onclick = () => addTransition(i);
+            const clearBtn = document.createElement("button");
+            clearBtn.className = "transition-clear";
+            clearBtn.textContent = "x";
+            clearBtn.title = "Remove transition note";
+            clearBtn.onclick = () => removeTransition(i);
+            actions.appendChild(clearBtn);
+            connector.appendChild(note);
+          }
+          connector.appendChild(arrow);
+          connector.appendChild(actions);
+          grid.appendChild(connector);
+        }
       });
     }
     function applyFilters() { renderScenes(); }
+    function addCue(idx) {
+      const val = prompt("Stage cue:", "");
+      if (!val) return;
+      if (!scenes[idx].cues) scenes[idx].cues = [];
+      scenes[idx].cues.push(val.trim());
+      saveProject();
+      renderScenes();
+    }
+    function removeCue(idx, cueIdx) {
+      if (!scenes[idx].cues) return;
+      scenes[idx].cues.splice(cueIdx, 1);
+      saveProject();
+      renderScenes();
+    }
+    function addTransition(idx) {
+      const current = scenes[idx].transitionNote || "";
+      const val = prompt("Transition note:", current);
+      if (val === null) return;
+      const trimmed = val.trim();
+      scenes[idx].transitionNote = trimmed;
+      if (!trimmed) delete scenes[idx].transitionNote;
+      saveProject();
+      renderScenes();
+    }
+    function removeTransition(idx) {
+      delete scenes[idx].transitionNote;
+      saveProject();
+      renderScenes();
+    }
     function deleteScene(idx) {
       if (!confirm("Delete this scene?")) return;
       scenes.splice(idx, 1);
@@ -618,7 +845,11 @@
     document.getElementById("statusFilter").addEventListener("change", applyFilters);
 
     loadProject();
+    setView("flow");
     renderScenes();
   </script>
 </body>
 </html>
+
+
+

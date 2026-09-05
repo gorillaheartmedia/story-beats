@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sprint Tool — Countdown Edition (Project Linked)</title>
@@ -246,7 +247,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -357,7 +358,8 @@
 <script>
   // --- TIMER COUNTDOWN LOGIC ---
   let countdownInterval, countdownActive = false, countdownEnd = 0, editingLocked = false;
-  let recognizing = false, recognition;
+  let recognizing = false, recognition, recognitionLastResultIndex = -1;
+  let dictationManualStop = false, dictationRestartTimer = null;
   let currentLogDate = null;
 
   function formatTime(ms) {
@@ -680,28 +682,120 @@
     frame();
   }
 
-  function toggleDictation() {
+  function updateMicButton() {
     const micBtn = document.getElementById('micBtn');
-    if (!('webkitSpeechRecognition' in window)) return alert("Speech recognition unsupported.");
-    if (!recognition) {
-      recognition = new webkitSpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-      recognition.onresult = e => {
-        for (let i = e.resultIndex; i < e.results.length; ++i)
-          if (e.results[i].isFinal) {
-            document.getElementById('editorBox').value += ' ' + e.results[i][0].transcript;
-            updateWordCount();
-          }
-      };
-    }
+    if (!micBtn) return;
     if (recognizing) {
-      recognition.stop(); micBtn.classList.remove('active'); micBtn.innerText = '🎙️ Start Dictation';
+      micBtn.classList.add('active');
+      micBtn.textContent = 'Stop Dictation';
     } else {
-      recognition.start(); micBtn.classList.add('active'); micBtn.innerText = '🛑 Stop Dictation';
+      micBtn.classList.remove('active');
+      micBtn.textContent = 'Start Dictation';
     }
-    recognizing = !recognizing;
+  }
+
+  function initDictation() {
+    if (recognition) return true;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition unsupported in this browser.");
+      return false;
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      recognizing = true;
+      dictationManualStop = false;
+      updateMicButton();
+    };
+
+    recognition.onend = () => {
+      recognizing = false;
+      updateMicButton();
+      if (dictationRestartTimer) {
+        clearTimeout(dictationRestartTimer);
+        dictationRestartTimer = null;
+      }
+      const editor = document.getElementById('editorBox');
+      if (!dictationManualStop && !editingLocked && editor && !editor.disabled) {
+        dictationRestartTimer = setTimeout(() => {
+          try { recognition.start(); } catch (_) {}
+        }, 450);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Dictation error:', event.error);
+      if (event.error === 'aborted') return;
+
+      if (event.error === 'network') {
+        if (location.protocol === 'file:') {
+          alert("Dictation needs a web origin. Open this page via localhost, not file://, and try again.");
+        } else if (!navigator.onLine) {
+          alert("Dictation needs internet access. You appear offline.");
+        } else {
+          alert("Dictation network error. Check connection and microphone permission, then retry.");
+        }
+        return;
+      }
+
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        alert("Microphone permission is blocked. Allow mic access for this site and retry.");
+        return;
+      }
+
+      alert("Dictation error: " + event.error);
+    };
+
+    recognition.onresult = e => {
+      const editor = document.getElementById('editorBox');
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (!e.results[i].isFinal || i === recognitionLastResultIndex) continue;
+        recognitionLastResultIndex = i;
+        const transcript = e.results[i][0].transcript.trim();
+        if (!transcript) continue;
+        const needsSpace = editor.value && !/\s$/.test(editor.value);
+        editor.value += (needsSpace ? ' ' : '') + transcript;
+      }
+      updateWordCount();
+    };
+    return true;
+  }
+
+  function stopDictation() {
+    dictationManualStop = true;
+    if (dictationRestartTimer) {
+      clearTimeout(dictationRestartTimer);
+      dictationRestartTimer = null;
+    }
+    if (!recognition || !recognizing) return;
+    recognition.stop();
+  }
+
+  function toggleDictation() {
+    if (editingLocked || document.getElementById('editorBox').disabled) {
+      alert("Editor is locked. Start a new sprint timer to dictate again.");
+      return;
+    }
+
+    if (!initDictation()) return;
+    if (recognizing) {
+      stopDictation();
+      return;
+    }
+
+    recognitionLastResultIndex = -1;
+    dictationManualStop = false;
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Dictation start failed:', err);
+      alert("Could not start dictation. Click the button again after allowing microphone access.");
+    }
   }
 
   // NEW — Send Sprint Data to Chapter Outliner
@@ -765,3 +859,4 @@
 </script>
 </body>
 </html>
+

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Scene Manager</title>
@@ -20,6 +21,8 @@
     .tag button:hover { color: #a42034;}
     .multi-opt.selected { background:#60a5fa; color:#18357b;}
     .multi-opt.add { background:#284687; color:#aee5ff; border:1px dashed #4bbcff;}
+    .multi-opt .remove-btn { margin-left:8px; background:none; border:none; color:#f8b4b4; font-size:1em; cursor:pointer;}
+    .multi-opt .remove-btn:hover { color:#ff6b6b; }
     .color-input-bar {display: flex; align-items: center; gap: 7px; margin-top: 3px;}
     input[type="color"] {width:35px; height:32px; border:none; background:transparent;}
     .scene-img-btns {display:flex; gap:7px;}
@@ -39,7 +42,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -48,7 +51,7 @@
   <div class="container">
     <div class="nav-bar">
       <div>
-        <button onclick="window.location.href='dashboard.html'" class="dashboard-btn">← Dashboard</button>
+        <button onclick="window.location.href='project_core.html'" class="dashboard-btn">← Dashboard</button>
         <button onclick="gotoStoryboard()" class="storyboard-btn">📋 Go to Storyboard</button>
       </div>
       <div class="nav-arrows">
@@ -119,8 +122,8 @@
 <script>
   // --- Project Data Handling ---
   function getQueryParam(name) { let params = new URLSearchParams(window.location.search); return params.get(name);}
-  function getProjects() { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
-  function setProjects(arr) { localStorage.setItem("plotProjects", JSON.stringify(arr)); }
+  async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+  async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
 
   let projectId = getQueryParam("id"), project=null, scenes=[], beats=[], locations=[], characters=[];
   let sceneIdx = 0;
@@ -131,18 +134,18 @@
   const savedEventId = localStorage.getItem("currentEvent");
   const savedProjectId = localStorage.getItem("currentProject");
 
-  function loadProject() {
-    if (!projectId) { alert("No project ID."); window.location.href = "dashboard.html"; return; }
-    let arr = getProjects();
+  async function loadProject() {
+    if (!projectId) { alert("No project ID."); window.location.href = "project_core.html"; return; }
+    let arr = await getProjectsAsync();
     project = arr.find(p => p.id === projectId);
-    if (!project) { alert("Project not found."); window.location.href = "dashboard.html"; return; }
+    if (!project) { alert("Project not found."); window.location.href = "project_core.html"; return; }
 
     if (!project.scenes) project.scenes = [];
     if (!project.locations) project.locations = [];
     if (!project.characters) project.characters = [];
-    scenes = project.scenes; 
-    locations = project.locations; 
-    characters = project.characters; 
+    scenes = project.scenes;
+    locations = normalizeNameList(project.locations);
+    characters = normalizeNameList(project.characters);
     beats = project.beats || [];
 
     document.getElementById('projTitle').textContent = "Scene Manager: " + (project.meta.storyTitle || "Untitled");
@@ -179,13 +182,13 @@
     localStorage.removeItem("currentProject");
   }
 
-  function saveProject() {
+  async function saveProject() {
     project.scenes = scenes; 
     project.locations = locations; 
     project.characters = characters;
-    let arr = getProjects();
+    let arr = await getProjectsAsync();
     let idx = arr.findIndex(p => p.id === projectId);
-    if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; setProjects(arr);}
+    if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; await setProjectsAsync(arr); }
   }
 
   // ---- Scene Form Logic ----
@@ -347,8 +350,19 @@
     locations.forEach(loc => {
       let span = document.createElement("span");
       span.className = "multi-opt" + (modalLocation===loc?" selected":"");
-      span.textContent = loc;
+      const nameEl = document.createElement("span");
+      nameEl.textContent = loc;
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "remove-btn";
+      removeBtn.textContent = "x";
+      removeBtn.title = "Remove location";
+      removeBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        removeLocation(loc);
+      };
       span.onclick = ()=>{ modalLocation = loc; renderLocList(); };
+      span.appendChild(nameEl);
+      span.appendChild(removeBtn);
       locDiv.appendChild(span);
     });
     let add = document.createElement("span");
@@ -359,9 +373,11 @@
   }
   document.getElementById("sceneLocInput").addEventListener("keydown", function(e){
     if (e.key === "Enter" && this.value.trim()) {
-      if (!locations.includes(this.value.trim())) locations.push(this.value.trim());
-      modalLocation = this.value.trim();
+      const val = this.value.trim();
+      if (!locations.includes(val)) locations.push(val);
+      modalLocation = val;
       this.value = "";
+      saveProject();
       renderLocList();
     }
   });
@@ -371,12 +387,23 @@
     characters.forEach(char => {
       let span = document.createElement("span");
       span.className = "multi-opt" + (modalChars.includes(char)?" selected":"");
-      span.textContent = char;
+      const nameEl = document.createElement("span");
+      nameEl.textContent = char;
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "remove-btn";
+      removeBtn.textContent = "x";
+      removeBtn.title = "Remove character";
+      removeBtn.onclick = (ev) => {
+        ev.stopPropagation();
+        removeCharacter(char);
+      };
       span.onclick = ()=>{
         if (modalChars.includes(char)) modalChars = modalChars.filter(c=>c!==char);
         else modalChars.push(char);
         renderCharList();
       };
+      span.appendChild(nameEl);
+      span.appendChild(removeBtn);
       charDiv.appendChild(span);
     });
     let add = document.createElement("span");
@@ -387,12 +414,37 @@
   }
   document.getElementById("sceneCharInput").addEventListener("keydown", function(e){
     if (e.key === "Enter" && this.value.trim()) {
-      if (!characters.includes(this.value.trim())) characters.push(this.value.trim());
-      if (!modalChars.includes(this.value.trim())) modalChars.push(this.value.trim());
+      const val = this.value.trim();
+      if (!characters.includes(val)) characters.push(val);
+      if (!modalChars.includes(val)) modalChars.push(val);
       this.value = "";
+      saveProject();
       renderCharList();
     }
   });
+  function normalizeNameList(list) {
+    if (!Array.isArray(list)) return [];
+    return list.map(item => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item === "object") {
+        if (typeof item.name === "string") return item.name.trim();
+        if (typeof item.title === "string") return item.title.trim();
+      }
+      return "";
+    }).filter(Boolean);
+  }
+  function removeLocation(name) {
+    locations = locations.filter(l => l !== name);
+    if (modalLocation === name) modalLocation = "";
+    saveProject();
+    renderLocList();
+  }
+  function removeCharacter(name) {
+    characters = characters.filter(c => c !== name);
+    modalChars = modalChars.filter(c => c !== name);
+    saveProject();
+    renderCharList();
+  }
   function renderBeatOptions() {
     const sel = document.getElementById("sceneBeat");
     sel.innerHTML = '<option value="">None</option>';
@@ -407,3 +459,6 @@
 </script>
 </body>
 </html>
+
+
+

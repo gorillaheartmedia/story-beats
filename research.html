@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8">
   <title>Research Archive</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -113,7 +114,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -227,64 +228,24 @@
     </div>
   </div>
 <script>
-// -------- IndexedDB Setup --------
-const DB_NAME = "ResearchArchiveDB";
-const DB_STORE = "files";
-const DB_VERSION = 1;
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = function (e) {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(DB_STORE)) {
-        db.createObjectStore(DB_STORE, { keyPath: "id" });
-      }
-    };
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-async function saveFileToDB(file) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const id = Date.now() + "_" + file.name;
-    const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).put({ id, file });
-    tx.oncomplete = () => resolve(id);
-    tx.onerror = e => reject(e.target.error);
-  });
-}
-
-async function getFileFromDB(id) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, "readonly");
-    const req = tx.objectStore(DB_STORE).get(id);
-    req.onsuccess = () => resolve(req.result ? req.result.file : null);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
 // -------- Project Picker Integration --------
 
-function getProjects() {
+async function getProjectsAsync() {
   try {
-    const projects = JSON.parse(localStorage.getItem("plotProjects") || "[]");
+    const projects = await window.projectStoreGetProjects();
     return Array.isArray(projects) ? projects : [];
   } catch (e) {
-    console.warn("plotProjects malformed!", e);
+    console.warn("plotProjects read failed!", e);
     return [];
   }
 }
 
-function showProjectPicker() {
+async function showProjectPicker() {
   const pickerBg = document.getElementById("pickerModalBg");
   const pickerSelect = document.getElementById("pickerProjectSelect");
   pickerSelect.innerHTML = "";
 
-  const projects = getProjects();
+  const projects = await getProjectsAsync();
   if (!projects.length) {
     pickerSelect.innerHTML = "<option disabled>No projects found</option>";
   } else {
@@ -298,10 +259,10 @@ function showProjectPicker() {
   pickerBg.style.display = "flex";
 }
 
-function setProjectFromPicker() {
+async function setProjectFromPicker() {
   const pickerSelect = document.getElementById("pickerProjectSelect");
   const selectedId = pickerSelect.value;
-  const projects = getProjects();
+  const projects = await getProjectsAsync();
   const project = projects.find(p => p.id === selectedId);
   if (project) {
     localStorage.setItem("currentProjectTitle", project.meta?.storyTitle || project.title || "Untitled");
@@ -323,7 +284,8 @@ let filterPin = false;
 function getArchive() {
   const pid = localStorage.getItem("currentProjectId");
   if (!pid) return [];
-  return JSON.parse(localStorage.getItem("researchArchive_" + pid) || "[]");
+  let data = JSON.parse(localStorage.getItem("researchArchive_" + pid) || "[]");
+  return data;
 }
 function setArchive(arr) {
   const pid = localStorage.getItem("currentProjectId");
@@ -332,7 +294,6 @@ function setArchive(arr) {
 }
 
 // --------- Rendering Logic -----------
-
 function renderGrid() {
   archive = getArchive();
   const grid = document.getElementById("archiveGrid");
@@ -357,41 +318,12 @@ function renderGrid() {
   filtered.forEach((entry, i) => {
     let div = document.createElement("div");
     div.className = "card";
-
-    if (entry.type === "image" && (entry.url || entry.fileId)) {
-      if (entry.fileId) {
-        getFileFromDB(entry.fileId).then(file => {
-          if (file) {
-            const url = URL.createObjectURL(file);
-            div.innerHTML += `<img class="thumb" src="${url}" alt="img">`;
-          }
-        });
-      } else {
-        div.innerHTML += `<img class="thumb" src="${entry.url}" alt="img">`;
-      }
-    } else if (entry.type === "video" && (entry.url || entry.fileId)) {
-      if (entry.fileId) {
-        getFileFromDB(entry.fileId).then(file => {
-          if (file) {
-            const url = URL.createObjectURL(file);
-            div.innerHTML += `<video class="thumb" src="${url}" controls></video>`;
-          }
-        });
-      } else {
-        div.innerHTML += `<video class="thumb" src="${entry.url}" controls></video>`;
-      }
-    } else if (entry.type === "audio" && (entry.url || entry.fileId)) {
-      if (entry.fileId) {
-        getFileFromDB(entry.fileId).then(file => {
-          if (file) {
-            const url = URL.createObjectURL(file);
-            div.innerHTML += `<audio class="thumb" src="${url}" controls></audio>`;
-          }
-        });
-      } else {
-        div.innerHTML += `<audio class="thumb" src="${entry.url}" controls></audio>`;
-      }
-    }
+    if (entry.type === "image" && entry.url)
+      div.innerHTML += `<img class="thumb" src="${entry.url}" alt="img">`;
+    else if (entry.type === "video" && entry.url)
+      div.innerHTML += `<video class="thumb" src="${entry.url}" controls></video>`;
+    else if (entry.type === "audio" && entry.url)
+      div.innerHTML += `<audio class="thumb" src="${entry.url}" controls></audio>`;
 
     div.innerHTML += `
       <span class="type-label">${entry.type ? entry.type[0].toUpperCase() + entry.type.slice(1) : ""}</span>
@@ -409,7 +341,6 @@ function renderGrid() {
     grid.appendChild(div);
   });
 }
-
 function togglePinEntry(idx) {
   archive = getArchive();
   archive[idx].pinned = !archive[idx].pinned;
@@ -423,54 +354,25 @@ function deleteEntry(idx) {
   setArchive(archive);
   renderGrid();
 }
-
 function previewEntry(idx) {
   previewIdx = idx;
   archive = getArchive();
   const entry = archive[idx];
   document.getElementById("previewModalBg").style.display = "flex";
+  // Render media
   const mediaRow = document.getElementById("previewMediaRow");
   mediaRow.innerHTML = "";
-
-  if (entry.type === "image" && (entry.url || entry.fileId)) {
-    if (entry.fileId) {
-      getFileFromDB(entry.fileId).then(file => {
-        if (file) mediaRow.innerHTML += `<img src="${URL.createObjectURL(file)}" style="max-width:100%;">`;
-      });
-    } else {
-      mediaRow.innerHTML += `<img src="${entry.url}" style="max-width:100%;">`;
-    }
-  } else if (entry.type === "video" && (entry.url || entry.fileId)) {
-    if (entry.fileId) {
-      getFileFromDB(entry.fileId).then(file => {
-        if (file) mediaRow.innerHTML += `<video src="${URL.createObjectURL(file)}" controls style="max-width:100%"></video>`;
-      });
-    } else {
-      mediaRow.innerHTML += `<video src="${entry.url}" controls style="max-width:100%"></video>`;
-    }
-  } else if (entry.type === "audio" && (entry.url || entry.fileId)) {
-    if (entry.fileId) {
-      getFileFromDB(entry.fileId).then(file => {
-        if (file) mediaRow.innerHTML += `<audio src="${URL.createObjectURL(file)}" controls style="width:100%"></audio>`;
-      });
-    } else {
-      mediaRow.innerHTML += `<audio src="${entry.url}" controls style="width:100%"></audio>`;
-    }
-  } else if (entry.type === "document") {
-    if (entry.fileId) {
-      getFileFromDB(entry.fileId).then(file => {
-        if (file) {
-          const url = URL.createObjectURL(file);
-          mediaRow.innerHTML += `<a href="${url}" download="${entry.fileName || 'download'}">Download ${entry.fileName || 'file'}</a>`;
-        }
-      });
-    } else if (entry.url) {
-      mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">Open Document</a>`;
-    }
-  } else if (entry.type === "link" && entry.url) {
+  if (entry.type === "image" && entry.url)
+    mediaRow.innerHTML += `<img src="${entry.url}" alt="img" style="max-width:100%;">`;
+  else if (entry.type === "video" && entry.url)
+    mediaRow.innerHTML += `<video src="${entry.url}" controls style="max-width:100%"></video>`;
+  else if (entry.type === "audio" && entry.url)
+    mediaRow.innerHTML += `<audio src="${entry.url}" controls style="width:100%"></audio>`;
+  else if (entry.type === "link" && entry.url)
     mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">${entry.url}</a>`;
-  }
-
+  else if (entry.type === "document" && entry.url)
+    mediaRow.innerHTML += `<a href="${entry.url}" target="_blank">Open Document</a>`;
+  // Render meta
   const meta = document.getElementById("previewMeta");
   meta.innerHTML = `
     <div class="label">${entry.label || "(Untitled)"}</div>
@@ -480,9 +382,9 @@ function previewEntry(idx) {
     <div class="desc" style="margin-top:8px;">${entry.notes ? entry.notes.replace(/\n/g, "<br>") : ""}</div>
     <div style="margin-top:10px;color:#ffe285;">${entry.pinned ? "⭐ Pinned" : ""}</div>
   `;
+  // Set pin button
   document.getElementById("pinBtn").className = "pin-btn" + (entry.pinned ? " pinned" : "");
 }
-
 function closePreviewModal() {
   document.getElementById("previewModalBg").style.display = "none";
 }
@@ -504,28 +406,11 @@ function togglePin(e) {
   togglePinEntry(previewIdx);
   previewEntry(previewIdx);
 }
-
-// ✅ Updated for IndexedDB
-async function downloadPreview() {
+function downloadPreview() {
   if (previewIdx === null) return;
   const entry = archive[previewIdx];
-
-  if (entry.fileId) {
-    const file = await getFileFromDB(entry.fileId);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = entry.fileName || "download";
-      a.click();
-    }
-  } else if (entry.url) {
-    window.open(entry.url, "_blank");
-  } else {
-    alert("No file or URL available.");
-  }
+  if (entry.url) window.open(entry.url, '_blank');
 }
-
 function copyPreview() {
   if (previewIdx === null) return;
   const entry = archive[previewIdx];
@@ -541,7 +426,7 @@ function editPreview() {
 function deletePreview() {
   if (previewIdx === null) return;
   if (!confirm("Delete this entry?")) return;
-  archive = getArchive(); 
+  archive = getArchive(); // Refresh in case something changed
   archive.splice(previewIdx, 1);
   setArchive(archive);
   closePreviewModal();
@@ -551,9 +436,10 @@ function deletePreview() {
 
 // ---------- Modal Logic --------------
 
-function safeOpenResearchModal(idx) {
+// Warn if current projectId does not match any real project
+async function safeOpenResearchModal(idx) {
   const curProjectId = localStorage.getItem("currentProjectId");
-  const allProjects = getProjects();
+  const allProjects = await getProjectsAsync();
   const valid = !!allProjects.find(p => p.id === curProjectId);
   if (!valid) {
     showProjectWarning();
@@ -576,18 +462,22 @@ function proceedAnyway() {
   window._intentToEditIdx = null;
 }
 
+// Add/Edit Research Modal + Delete logic
 function openResearchModal(idx) {
   editingIdx = idx;
   let entry = idx != null ? getArchive()[idx] : {};
   document.getElementById("modalLabel").value = entry.label || "";
   document.getElementById("modalType").value = entry.type || "note";
   document.getElementById("modalDesc").value = entry.notes || "";
+  // tags
   modalTags = entry.tags ? [...entry.tags] : [];
   renderModalTags();
+  // url/file
   document.getElementById("modalURL").value = entry.url || "";
   document.getElementById("modalFile").value = "";
   toggleTypeFields();
 
+  // Delete button logic
   const delBtn = document.getElementById("deleteResearchBtn");
   if (delBtn) {
     delBtn.style.display = (editingIdx != null) ? "" : "none";
@@ -609,41 +499,18 @@ function openResearchModal(idx) {
 function closeResearchModal() {
   document.getElementById("researchModalBg").style.display = "none";
 }
-
-// ✅ Updated saveResearch for IndexedDB
-async function saveResearch() {
+function saveResearch() {
   let label = document.getElementById("modalLabel").value.trim();
   let type = document.getElementById("modalType").value;
   let notes = document.getElementById("modalDesc").value.trim();
   let url = document.getElementById("modalURL").value.trim();
   let tags = modalTags.slice();
 
-  const fileInput = document.getElementById("modalFile");
-  const file = fileInput.files[0];
-
   let entry = {
-    label,
-    type,
-    notes,
-    url,
-    tags,
-    date:
-      editingIdx != null && getArchive()[editingIdx].date
-        ? getArchive()[editingIdx].date
-        : new Date().toISOString(),
-    pinned: editingIdx != null && getArchive()[editingIdx].pinned,
-    fileName: file ? file.name : null,
-    fileId: null
+    label, type, notes, url, tags,
+    date: editingIdx != null && getArchive()[editingIdx].date ? getArchive()[editingIdx].date : (new Date()).toISOString(),
+    pinned: editingIdx != null && getArchive()[editingIdx].pinned
   };
-
-  if (file) {
-    entry.fileId = await saveFileToDB(file);
-  }
-
-  finalizeSave(entry);
-}
-
-function finalizeSave(entry) {
   let arr = getArchive();
   if (editingIdx != null) arr[editingIdx] = entry;
   else arr.unshift(entry);
@@ -652,7 +519,6 @@ function finalizeSave(entry) {
   renderGrid();
   editingIdx = null;
 }
-
 let modalTags = [];
 function renderModalTags() {
   const tagList = document.getElementById("modalTagList");
@@ -679,15 +545,13 @@ function removeModalTag(idx) {
 }
 function toggleTypeFields() {
   let type = document.getElementById("modalType").value;
-  document.getElementById("fileField").style.display =
-    (type === "image" || type === "video" || type === "audio" || type === "document")
-      ? "block"
-      : "none";
-  document.getElementById("urlField").style.display = (type === "link") ? "block" : "none";
+  document.getElementById("fileField").style.display = (type === "image" || type === "video" || type === "audio" || type === "document") ? "block" : "none";
+  document.getElementById("urlField").style.display = (type !== "note") ? "block" : "none";
 }
 
 // ------------ Modal Utility ------------
 
+// Failsafe: add a "Reload" and "Switch Project" button to the banner
 function showProjectBanner(title) {
   const banner = document.getElementById('projectBanner');
   banner.innerHTML =
@@ -701,11 +565,12 @@ function switchProject() {
   window.location.reload();
 }
 
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', async function() {
   const currentTitle = localStorage.getItem("currentProjectTitle");
   const currentId = localStorage.getItem("currentProjectId");
-  const allProjects = getProjects();
+  const allProjects = await getProjectsAsync();
 
+  // If missing or invalid, force picker
   if (!currentTitle || !currentId || !allProjects.find(p => p.id === currentId)) {
     showProjectPicker();
   } else {
@@ -714,9 +579,8 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-
-
 </body>
 </html>
+
 
 

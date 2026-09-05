@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Location Creator</title>
@@ -21,8 +22,11 @@
     .slider-bar {display:flex; align-items:center; gap:10px; margin-top:8px;}
     .slider-label {font-size:1.06em; color:#aee5ff;}
     .img-btns {display:flex; gap:7px; margin-top:6px;}
+    .img-drop-zone {border: 1.2px dashed #3b82f666; border-radius: 9px; padding: 8px 10px; background: #19306a22;}
+    .img-drop-zone.dragover {border-color: #60a5fa; background: #1a357244;}
     .img-preview {width: 100%; max-width: 340px; max-height: 110px; margin-top: 7px; margin-bottom: 7px; border-radius: 7px;}
     .img-url-input {width: calc(100% - 40px);}
+    .img-drop-hint {margin-top: 6px; font-size: .95em; color: #9ad7ff;}
     .timeline-bar {margin-top:9px;}
     .timeline-entry {background:#203a64; border-radius:7px; padding:7px 11px 7px 9px; color:#e5efff; margin-bottom:7px; font-size:.99em; display:flex; align-items:center; gap:7px;}
     .timeline-entry input[type="text"] {max-width:60px; margin:0;}
@@ -83,7 +87,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -91,7 +95,7 @@
 <body>
   <div class="container">
     <div>
-      <button onclick="window.location.href='dashboard.html'" class="dashboard-btn">← Dashboard</button>
+      <button onclick="window.location.href='project_core.html'" class="dashboard-btn">← Dashboard</button>
       <button onclick="gotoProfiles()" class="profile-btn">📚 Location Profiles</button>
     </div>
     <h1 id="projTitle">Location Creator</h1>
@@ -107,17 +111,33 @@
         <input id="locTagInput" type="text" maxlength="18" placeholder="Add tag & press Enter"/>
       </label>
       <label>Description/Notes
-        <textarea id="locDesc" rows="3" maxlength="180" placeholder="Describe or note this location"></textarea>
+        <textarea id="locDesc" rows="3" maxlength="500" placeholder="Describe or note this location"></textarea>
+      </label>
+      <label>Significance
+        <textarea id="locSignificance" rows="3" maxlength="500" placeholder="Why this place matters"></textarea>
       </label>
       <label>Image
-        <div class="img-btns">
-          <input id="locImgFile" type="file" accept="image/*" style="display:none;">
-          <button type="button" onclick="document.getElementById('locImgFile').click()">Upload Image</button>
-          <button type="button" onclick="addImgFromURL()">From URL</button>
-          <button type="button" onclick="clearImgPreview()">Remove</button>
+        <div class="img-drop-zone" id="locImgDropZone">
+          <div class="img-btns">
+            <input id="locImgFile" type="file" accept="image/*" style="display:none;">
+            <button type="button" onclick="document.getElementById('locImgFile').click()">Upload Image</button>
+            <button type="button" onclick="addImgFromURL()">From URL</button>
+            <button type="button" onclick="clearImgPreview()">Remove</button>
+          </div>
+          <input id="locImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
+          <img id="locImgPreview" class="img-preview" style="display:none;">
+          <div id="locImgDropHint" class="img-drop-hint">Drag &amp; drop an image here (optional)</div>
         </div>
-        <input id="locImgURLInput" type="text" class="img-url-input" placeholder="Paste image URL and press Enter" style="display:none;">
-        <img id="locImgPreview" class="img-preview" style="display:none;">
+      </label>
+      <label>Attachment
+        <div class="img-drop-zone">
+          <div class="img-btns">
+            <input id="locFileInput" type="file" style="display:none;">
+            <button type="button" onclick="document.getElementById('locFileInput').click()">Upload File</button>
+            <button type="button" onclick="clearAttachment()">Remove</button>
+          </div>
+          <div id="locAttachmentInfo" class="img-drop-hint">No attachment</div>
+        </div>
       </label>
       <label>Significance/Importance
         <div class="slider-bar">
@@ -145,40 +165,79 @@
   <script>
     // --- Project Data ---
     function getQueryParam(name) { let params = new URLSearchParams(window.location.search); return params.get(name);}
-    function getProjects() { return JSON.parse(localStorage.getItem("plotProjects") || "[]"); }
-    function setProjects(arr) { localStorage.setItem("plotProjects", JSON.stringify(arr)); }
+    async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+    async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
     let projectId = getQueryParam("id"), project=null, locations=[];
-    let modalTags=[], modalObjs=[], modalImg=null, modalTimeline=[];
-    function loadProject() {
-      if (!projectId) { alert("No project ID."); window.location.href = "dashboard.html"; return; }
-      let arr = getProjects();
+    let modalTags=[], modalObjs=[], modalImg=null, modalAttachment=null, modalTimeline=[];
+    async function loadProject() {
+      if (!projectId) { alert("No project ID."); window.location.href = "project_core.html"; return; }
+      let arr = await getProjectsAsync();
       project = arr.find(p => p.id === projectId);
-      if (!project) { alert("Project not found."); window.location.href = "dashboard.html"; return; }
+      if (!project) { alert("Project not found."); window.location.href = "project_core.html"; return; }
       if (!project.locations) project.locations = [];
       locations = project.locations;
       document.getElementById('projTitle').textContent = "Location Creator: " + (project.meta.storyTitle || "Untitled");
       clearForm();
       updateSliderLabel();
     }
-    function saveProject() { project.locations = locations; let arr = getProjects(); let idx = arr.findIndex(p => p.id === projectId); if (idx !== -1) { project.lastModified = (new Date()).toISOString(); arr[idx] = project; setProjects(arr);}}
+    async function saveProject() {
+      if (!project) {
+        await loadProject();
+        if (!project) return false;
+      }
+      project.locations = locations;
+      let arr = await getProjectsAsync();
+      let idx = arr.findIndex(p => p.id === projectId);
+      if (idx !== -1) {
+        project.lastModified = (new Date()).toISOString();
+        arr[idx] = project;
+        return await setProjectsAsync(arr);
+      }
+      return true;
+    }
     // --- Form Logic ---
-    function saveLoc() {
+    async function saveLoc() {
       let name = document.getElementById('locName').value.trim();
       let type = document.getElementById('locType').value.trim();
       let tags = modalTags.slice();
       let desc = document.getElementById('locDesc').value.trim();
+      let significance = document.getElementById('locSignificance').value.trim();
       let img = modalImg;
+      let attachment = modalAttachment;
       let weight = parseInt(document.getElementById('locWeight').value) || 5;
       let mood = document.getElementById('locMood').value.trim();
       let objects = modalObjs.slice();
       let timeline = modalTimeline.slice();
       if (!name) return alert("Name required.");
-      let obj = { name, type, tags, desc, img, weight, mood, objects, timeline };
+      let obj = { name, type, tags, desc, significance, img, attachment, weight, mood, objects, timeline };
       // check if editing (by name), otherwise add
       let idx = locations.findIndex(l=>l.name===name);
       if (idx !== -1) locations[idx] = obj;
       else locations.push(obj);
-      saveProject();
+      if (!await saveProject()) {
+        if (modalAttachment && modalAttachment.data && modalAttachment.data.startsWith("data:") && confirm("Storage is full. Save without the attachment?")) {
+          obj.attachment = null;
+          modalAttachment = null;
+          if (idx !== -1) locations[idx] = obj;
+          else locations[locations.length - 1] = obj;
+          if (!await saveProject()) {
+            alert("Storage is still full. Remove other images or data, then try again.");
+            return;
+          }
+        } else if (modalImg && modalImg.startsWith("data:") && confirm("Storage is full. Save without the image?")) {
+          obj.img = null;
+          modalImg = null;
+          if (idx !== -1) locations[idx] = obj;
+          else locations[locations.length - 1] = obj;
+          if (!await saveProject()) {
+            alert("Storage is still full. Remove other images or data, then try again.");
+            return;
+          }
+        } else {
+          alert("Storage is full. Try smaller files or use external URLs.");
+          return;
+        }
+      }
       clearForm();
       alert("Location saved!");
     }
@@ -187,7 +246,9 @@
       document.getElementById('locType').value = "";
       modalTags = []; renderModalTags();
       document.getElementById('locDesc').value = "";
+      document.getElementById('locSignificance').value = "";
       modalImg = null; updateImgPreview();
+      modalAttachment = null; updateAttachmentInfo();
       document.getElementById('locWeight').value = 5; updateSliderLabel();
       document.getElementById('locMood').value = "";
       modalObjs = []; renderModalObjs();
@@ -202,15 +263,125 @@
     function removeModalObj(i) { modalObjs.splice(i, 1); renderModalObjs(); }
     document.getElementById("locObjInput").addEventListener("keydown", function (e) { if (e.key === "Enter" && this.value.trim()) { if (!modalObjs.includes(this.value.trim())) { modalObjs.push(this.value.trim()); } this.value = ""; renderModalObjs(); e.preventDefault(); }});
     // --- Image ---
-    document.getElementById("locImgFile").addEventListener("change", function(ev){
-      const file = this.files[0]; if (!file) return;
-      const reader = new FileReader(); reader.onload = function(e){ modalImg = e.target.result; updateImgPreview(); };
-      reader.readAsDataURL(file); this.value = '';
+    const MAX_IMAGE_DIM = 1400;
+    const MAX_IMAGE_DATA_URL = 900000;
+    function loadImageFile(file, done) {
+      const reader = new FileReader();
+      reader.onload = function(e){ done(e.target.result); };
+      reader.readAsDataURL(file);
+    }
+    function compressDataUrl(dataUrl, done) {
+      const img = new Image();
+      img.onload = function() {
+        let w = img.width, h = img.height;
+        const scale = Math.min(1, MAX_IMAGE_DIM / Math.max(w, h));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.75);
+        done(compressed);
+      };
+      img.onerror = function(){ done(null); };
+      img.src = dataUrl;
+    }
+    function setModalImgFromFile(file) {
+      if (!file) return;
+      loadImageFile(file, function(dataUrl){
+        compressDataUrl(dataUrl, function(compressed){
+          const finalImg = compressed || dataUrl;
+          if (!finalImg) { alert("Could not load image."); return; }
+          if (finalImg.length > MAX_IMAGE_DATA_URL) {
+            alert("Image too large for storage. Try a smaller image or use URL.");
+            return;
+          }
+          modalImg = finalImg;
+          updateImgPreview();
+        });
+      });
+    }
+    document.getElementById("locImgFile").addEventListener("change", function(){
+      const file = this.files[0];
+      if (!file) return;
+      setModalImgFromFile(file);
+      this.value = '';
     });
-    function updateImgPreview() { const img = document.getElementById("locImgPreview"); if (modalImg) { img.src = modalImg; img.style.display = ""; } else { img.style.display = "none"; }}
+    function updateImgPreview() {
+      const img = document.getElementById("locImgPreview");
+      const hint = document.getElementById("locImgDropHint");
+      if (modalImg) {
+        img.src = modalImg;
+        img.style.display = "";
+        hint.style.display = "none";
+      } else {
+        img.style.display = "none";
+        hint.style.display = "";
+      }
+    }
     function addImgFromURL() { document.getElementById("locImgURLInput").style.display = ""; document.getElementById("locImgURLInput").focus(); }
-    document.getElementById("locImgURLInput").addEventListener("keydown", function(e){ if (e.key === "Enter" && this.value.trim()) { modalImg = this.value.trim(); updateImgPreview(); this.value = ""; this.style.display = "none";}});
+    document.getElementById("locImgURLInput").addEventListener("keydown", function(e){
+      if (e.key === "Enter" && this.value.trim()) {
+        const val = this.value.trim();
+        if (val.startsWith("data:") && val.length > MAX_IMAGE_DATA_URL) {
+          alert("Image data is too large for storage. Use a smaller image or a URL.");
+          return;
+        }
+        modalImg = val;
+        updateImgPreview();
+        this.value = "";
+        this.style.display = "none";
+      }
+    });
     function clearImgPreview() { modalImg = null; updateImgPreview(); document.getElementById("locImgURLInput").style.display = "none"; }
+    const locImgDropZone = document.getElementById("locImgDropZone");
+    locImgDropZone.addEventListener("dragover", function(e){
+      e.preventDefault();
+      locImgDropZone.classList.add("dragover");
+    });
+    locImgDropZone.addEventListener("dragleave", function(){
+      locImgDropZone.classList.remove("dragover");
+    });
+    locImgDropZone.addEventListener("drop", function(e){
+      e.preventDefault();
+      locImgDropZone.classList.remove("dragover");
+      const file = e.dataTransfer.files[0];
+      if (!file || !file.type.startsWith("image/")) return;
+      setModalImgFromFile(file);
+    });
+    // --- Attachment ---
+    const MAX_ATTACHMENT_DATA_URL = 1500000;
+    function setAttachmentFromFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        if (dataUrl && dataUrl.length > MAX_ATTACHMENT_DATA_URL) {
+          alert("Attachment too large for storage. Try a smaller file.");
+          return;
+        }
+        modalAttachment = { name: file.name, type: file.type || "application/octet-stream", data: dataUrl };
+        updateAttachmentInfo();
+      };
+      reader.readAsDataURL(file);
+    }
+    function updateAttachmentInfo() {
+      const info = document.getElementById("locAttachmentInfo");
+      if (modalAttachment && modalAttachment.name && modalAttachment.data) {
+        info.innerHTML = 'Attached: <a href="' + modalAttachment.data + '" download="' + modalAttachment.name + '">' + modalAttachment.name + "</a>";
+      } else if (modalAttachment && modalAttachment.name) {
+        info.textContent = "Attached: " + modalAttachment.name;
+      } else {
+        info.textContent = "No attachment";
+      }
+    }
+    function clearAttachment() { modalAttachment = null; updateAttachmentInfo(); }
+    document.getElementById("locFileInput").addEventListener("change", function(){
+      const file = this.files[0];
+      if (!file) return;
+      setAttachmentFromFile(file);
+      this.value = "";
+    });
     // --- Slider label ---
     function updateSliderLabel() {
       const slider = document.getElementById('locWeight');
@@ -236,3 +407,6 @@
   </script>
 </body>
 </html>
+
+
+

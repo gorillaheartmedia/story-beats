@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8">
   <title>Messenger Dialogue Tool</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -375,7 +376,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -465,14 +466,34 @@
     let dlgBeat = "";
 
     // --- Data ---
-    let characters = JSON.parse(localStorage.getItem("characters")||"[]");
+    function getActiveProjectId() {
+      const urlParams = new URLSearchParams(window.location.search);
+      let pid = urlParams.get("projectId") || urlParams.get("id");
+      if (!pid) {
+        pid = sessionStorage.getItem("currentPlotProjectId") ||
+              localStorage.getItem("currentProjectId");
+      }
+      return pid || null;
+    }
+
+    const projectId = getActiveProjectId();
     let relationships = JSON.parse(localStorage.getItem("relationships")||"{}");
     let dialogueList = JSON.parse(localStorage.getItem("dialogues")||"[]");
-    let projects = JSON.parse(localStorage.getItem("plotProjects")||"[]");
-    let currentProject = projects.length ? projects[0] : null;
-    let scenes = currentProject?.scenes || [];
-    let events = currentProject?.events || [];
-    let beats = currentProject?.beats || [];
+    let projects = [];
+    let currentProject = null;
+    let scenes = [];
+    let events = [];
+    let beats = [];
+    let characters = [];
+
+    async function initProjectData() {
+      projects = await window.projectStoreGetProjects();
+      currentProject = projectId ? projects.find(p => p.id === projectId) : (projects[0] || null);
+      scenes = currentProject?.scenes || [];
+      events = currentProject?.events || [];
+      beats = currentProject?.beats || [];
+      characters = JSON.parse(localStorage.getItem("characters_" + (currentProject?.id || "default")) || "[]");
+    }
 
     // --- Tag system ---
     function addTag() {
@@ -747,7 +768,8 @@
     document.getElementById('beatPicker').onchange = function() { dlgBeat = this.value; };
 
     // --- Init ---
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
+      await initProjectData();
       populateCharPicker();
       renderCharList();
       populateMetaPickers();
@@ -758,3 +780,6 @@
   </script>
 </body>
 </html>
+
+
+

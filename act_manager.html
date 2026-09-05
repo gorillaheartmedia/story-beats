@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="project-safety.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Act Manager</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --main-blue: #1958ca;
+      --accent-blue: #3b82f6;
+      --glass-bg: rgba(24,39,70,0.94);
+      --card-bg: rgba(255,255,255,0.12);
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #e8ecfa;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 36px auto 36px auto;
+      background: var(--glass-bg);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a55;
+      padding: 28px 28px 40px 28px;
+      border: 1.5px solid #3b82f666;
+    }
+    h1 { font-size: 2em; margin: 0 0 12px 0; color: #fff; }
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .btn {
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background .15s, color .14s;
+      box-shadow: 0 2px 9px #10399a24;
+    }
+    .btn:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff; }
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .event-pool {
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid #2b4c99;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .event-pool h2 {
+      font-size: 1.1em;
+      margin: 0;
+      color: #b7d8fd;
+    }
+    .acts-board {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .act-col {
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid #2b4c99;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 120px;
+    }
+    .act-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .act-title {
+      font-weight: 600;
+      color: #b7d8fd;
+      font-size: 1.02em;
+    }
+    .act-title input {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      padding: 6px 8px;
+      font-size: 0.98em;
+    }
+    .act-desc {
+      width: 100%;
+      margin-top: 0;
+      border-radius: 6px;
+      border: 1px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      padding: 6px 8px;
+      font-size: 0.96em;
+      min-height: 72px;
+      resize: vertical;
+    }
+    .template-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .template-bar select {
+      border-radius: 6px;
+      border: 1px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      padding: 6px 8px;
+      min-width: 220px;
+    }
+    .event-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 40px;
+    }
+    .event-card {
+      background: var(--card-bg);
+      border: 1.2px solid #2953a950;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: grab;
+    }
+    .event-title {
+      font-weight: 600;
+      color: #e8ecfa;
+      font-size: 0.98em;
+      margin-bottom: 6px;
+    }
+    .event-meta {
+      font-size: 0.9em;
+      color: #aee5ff;
+      opacity: 0.9;
+    }
+    .event-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .event-actions select {
+      flex: 1;
+      min-width: 140px;
+      border-radius: 6px;
+      border: 1px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      padding: 5px 6px;
+    }
+    .empty-note {
+      font-size: 0.95em;
+      color: #9fb7e8;
+      opacity: 0.7;
+      padding: 6px 2px;
+    }
+    .pool-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: var(--card-bg);
+      border: 1.2px solid #2953a950;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: grab;
+    }
+    .pool-meta {
+      font-size: 0.9em;
+      color: #aee5ff;
+      opacity: 0.9;
+    }
+    .pool-actions select {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      padding: 5px 6px;
+    }
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 700px) {
+      .container { padding: 12px 2vw 20px 2vw; }
+      .event-actions select { min-width: 120px; }
+    }
+  </style>
+  <script>
+    getProjectId().then(projectId => {
+      if (!projectId) {
+        alert("No project selected!");
+        window.location.href = "project_core.html";
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <div>
+        <button class="btn" onclick="goToEventManager()">Back to Event Manager</button>
+        <button class="btn" onclick="goToProjectCore()">Project Core Hub</button>
+      </div>
+      <button class="btn" onclick="addAct()">Add Act</button>
+    </div>
+    <div class="template-bar">
+      <select id="actTemplateSelect"></select>
+      <button class="btn" onclick="applyTemplate()">Apply Template</button>
+      <button class="btn" onclick="saveActEdits()">Save Act Details</button>
+    </div>
+    <h1 id="projTitle">Act Manager</h1>
+    <div class="layout">
+      <div class="event-pool">
+        <h2>Event Pool</h2>
+        <div id="eventPoolList"></div>
+      </div>
+      <div id="actsBoard" class="acts-board"></div>
+    </div>
+  </div>
+
+  <script>
+    function getQueryParam(name) {
+      let params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+    async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+    async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
+
+    let projectId = getQueryParam("id");
+    let project = null;
+    let events = [];
+    let acts = [];
+    let pendingActEdits = {};
+
+    const ACT_TEMPLATES = [
+      {
+        id: "three_act",
+        name: "Three-Act Structure",
+        description: "Setup, Confrontation, Resolution.",
+        acts: [
+          { title: "Act I - Setup", description: "Establish world, characters, and stakes." },
+          { title: "Act II - Confrontation", description: "Escalate conflict, complications, and reversals." },
+          { title: "Act III - Resolution", description: "Climax and aftermath; tie off the arc." }
+        ]
+      },
+      {
+        id: "kisho_tenketsu",
+        name: "Kishotenketsu",
+        description: "Introduction, Development, Twist, Conclusion.",
+        acts: [
+          { title: "Ki - Introduction", description: "Introduce setting, characters, and premise." },
+          { title: "Sho - Development", description: "Deepen context and build progression." },
+          { title: "Ten - Twist", description: "Introduce an unexpected turn." },
+          { title: "Ketsu - Conclusion", description: "Wrap up with resonance and meaning." }
+        ]
+      },
+      {
+        id: "seven_point",
+        name: "Seven-Point Structure",
+        description: "Seven points for more detailed progression.",
+        acts: [
+          { title: "Hook", description: "Open with a defining moment or question." },
+          { title: "Plot Turn 1", description: "Inciting disruption to the status quo." },
+          { title: "Pinch 1", description: "Pressure rises; stakes become clear." },
+          { title: "Midpoint", description: "Reversal, revelation, or shift in goal." },
+          { title: "Pinch 2", description: "Pressure peaks; options narrow." },
+          { title: "Plot Turn 2", description: "Final decision or turning point." },
+          { title: "Resolution", description: "Climax and fallout." }
+        ]
+      },
+      {
+        id: "non_linear",
+        name: "Non-linear Structure",
+        description: "Non-sequential acts; define your own flow.",
+        acts: [
+          { title: "Fragment I", description: "Key moment that anchors the narrative." },
+          { title: "Fragment II", description: "Complementary or contrasting moment." },
+          { title: "Fragment III", description: "Reframe the story with new meaning." }
+        ]
+      },
+      {
+        id: "custom_blank",
+        name: "Custom (Blank)",
+        description: "Start with an empty act list.",
+        acts: []
+      }
+    ];
+
+    function ensureActs(list) {
+      if (Array.isArray(list) && list.length) return list;
+      return [
+        { id: "act_1", title: "Act I" },
+        { id: "act_2", title: "Act II" },
+        { id: "act_3", title: "Act III" }
+      ];
+    }
+
+    async function loadProject() {
+      if (!projectId) {
+        alert("No project ID.");
+        window.location.href = "project_core.html";
+        return;
+      }
+      let arr = await getProjectsAsync();
+      project = arr.find(p => p.id === projectId);
+      if (!project) {
+        alert("Project not found.");
+        window.location.href = "project_core.html";
+        return;
+      }
+      if (!project.events) project.events = [];
+      if (!project.acts) project.acts = [];
+      events = project.events;
+      acts = ensureActs(project.acts);
+      project.acts = acts;
+      document.getElementById("projTitle").textContent =
+        "Act Manager: " + (project.meta && project.meta.storyTitle ? project.meta.storyTitle : "Untitled");
+    }
+
+    async function saveProject() {
+      project.events = events;
+      project.acts = acts;
+      let arr = await getProjectsAsync();
+      let idx = arr.findIndex(p => p.id === projectId);
+      if (idx !== -1) {
+        project.lastModified = (new Date()).toISOString();
+        arr[idx] = project;
+        await setProjectsAsync(arr);
+      }
+    }
+
+    function goToEventManager() {
+      window.location.href = "event_manager.html?id=" + encodeURIComponent(projectId);
+    }
+    function goToProjectCore() {
+      window.location.href = "project_core.html?id=" + encodeURIComponent(projectId);
+    }
+
+    async function addAct() {
+      const name = prompt("Act name:", "New Act");
+      if (!name) return;
+      acts.push({ id: "act_" + Date.now(), title: name.trim() });
+      await saveProject();
+      renderActs();
+    }
+
+    async function deleteAct(actId) {
+      const act = acts.find(a => a.id === actId);
+      if (!act) return;
+      if (!confirm("Delete " + act.title + "? Events will be unassigned.")) return;
+      acts = acts.filter(a => a.id !== actId);
+      events.forEach(ev => {
+        if (ev.actId === actId) ev.actId = "";
+      });
+      await saveProject();
+      renderActs();
+    }
+
+    async function updateActTitle(actId, value) {
+      const act = acts.find(a => a.id === actId);
+      if (!act) return;
+      act.title = value.trim() || act.title;
+      await saveProject();
+    }
+
+    function updateActDesc(actId, value) {
+      pendingActEdits[actId] = value;
+    }
+
+    async function saveActEdits() {
+      acts.forEach(act => {
+        if (Object.prototype.hasOwnProperty.call(pendingActEdits, act.id)) {
+          act.description = pendingActEdits[act.id].trim();
+        }
+      });
+      pendingActEdits = {};
+      await saveProject();
+      renderActs();
+    }
+
+    function renderTemplates() {
+      const sel = document.getElementById("actTemplateSelect");
+      sel.innerHTML = "";
+      ACT_TEMPLATES.forEach(tpl => {
+        const opt = document.createElement("option");
+        opt.value = tpl.id;
+        opt.textContent = tpl.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    function applyTemplate() {
+      const sel = document.getElementById("actTemplateSelect");
+      const tpl = ACT_TEMPLATES.find(t => t.id === sel.value);
+      if (!tpl) return;
+      if (!confirm("Replace current acts with this template?")) return;
+      acts = tpl.acts.map((act, idx) => ({
+        id: "act_" + Date.now() + "_" + idx,
+        title: act.title,
+        description: act.description || ""
+      }));
+      events.forEach(ev => {
+        ev.actId = "";
+        ev.actOrder = null;
+      });
+      saveProject();
+      renderActs();
+    }
+
+    function getActEventIndices(actId) {
+      const mapped = events.map((ev, idx) => ({ ev, idx }))
+        .filter(item => (item.ev.actId || "") === actId);
+      mapped.sort((a, b) => {
+        const aOrder = typeof a.ev.actOrder === "number" ? a.ev.actOrder : (typeof a.ev.order === "number" ? a.ev.order : a.idx);
+        const bOrder = typeof b.ev.actOrder === "number" ? b.ev.actOrder : (typeof b.ev.order === "number" ? b.ev.order : b.idx);
+        return aOrder - bOrder;
+      });
+      return mapped.map(item => item.idx);
+    }
+
+    function setActOrder(actId, orderedIdxs) {
+      orderedIdxs.forEach((idx, i) => {
+        events[idx].actId = actId;
+        events[idx].actOrder = i + 1;
+      });
+    }
+
+    function moveEventToAct(eventIdx, newActId) {
+      events[eventIdx].actId = newActId;
+      events[eventIdx].actOrder = null;
+      const updated = getActEventIndices(newActId);
+      setActOrder(newActId, updated);
+      saveProject();
+      renderActs();
+    }
+
+    function renderActs() {
+      const board = document.getElementById("actsBoard");
+      const pool = document.getElementById("eventPoolList");
+      board.innerHTML = "";
+      pool.innerHTML = "";
+
+      const unassigned = events
+        .map((ev, idx) => ({ ev, idx }))
+        .filter(item => !item.ev.actId);
+      if (!unassigned.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-note";
+        empty.textContent = "No unassigned events.";
+        pool.appendChild(empty);
+      } else {
+        unassigned.forEach(item => {
+          const ev = item.ev;
+          const card = document.createElement("div");
+          card.className = "pool-item";
+          card.draggable = true;
+          card.dataset.eventIndex = item.idx;
+          card.ondragstart = (e) => {
+            e.dataTransfer.setData("eventIndex", item.idx);
+          };
+          const title = document.createElement("div");
+          title.className = "event-title";
+          title.textContent = ev.title || "(Untitled Event)";
+          const meta = document.createElement("div");
+          meta.className = "pool-meta";
+          meta.textContent = ev.notes || ev.when || "";
+          const actions = document.createElement("div");
+          actions.className = "pool-actions";
+          const select = document.createElement("select");
+          select.innerHTML = "<option value=\"\">Assign to act...</option>";
+          acts.forEach(act => {
+            const opt = document.createElement("option");
+            opt.value = act.id;
+            opt.textContent = act.title;
+            select.appendChild(opt);
+          });
+          select.onchange = () => moveEventToAct(item.idx, select.value);
+          actions.appendChild(select);
+          card.appendChild(title);
+          if (meta.textContent) card.appendChild(meta);
+          card.appendChild(actions);
+          pool.appendChild(card);
+        });
+      }
+
+      acts.forEach(act => {
+        const col = document.createElement("div");
+        col.className = "act-col";
+        col.dataset.actId = act.id;
+
+        const header = document.createElement("div");
+        header.className = "act-header";
+        const input = document.createElement("input");
+        input.value = act.title;
+        input.className = "act-title";
+        input.onchange = () => updateActTitle(act.id, input.value);
+        header.appendChild(input);
+        const del = document.createElement("button");
+        del.className = "btn";
+        del.textContent = "Delete";
+        del.onclick = () => deleteAct(act.id);
+        header.appendChild(del);
+
+        const desc = document.createElement("textarea");
+        desc.className = "act-desc";
+        desc.placeholder = "Act description, purpose, or notes.";
+        desc.value = act.description || "";
+        desc.oninput = () => updateActDesc(act.id, desc.value);
+        col.appendChild(desc);
+
+        const list = document.createElement("div");
+        list.className = "event-list";
+        list.ondragover = (e) => e.preventDefault();
+        list.ondrop = (e) => {
+          e.preventDefault();
+          const fromIdx = parseInt(e.dataTransfer.getData("eventIndex"), 10);
+          if (Number.isNaN(fromIdx)) return;
+          const currentActId = act.id;
+          const ordered = getActEventIndices(currentActId).filter(i => i !== fromIdx);
+          ordered.push(fromIdx);
+          setActOrder(currentActId, ordered);
+          saveProject();
+          renderActs();
+        };
+
+        const indices = getActEventIndices(act.id);
+        if (!indices.length) {
+          const empty = document.createElement("div");
+          empty.className = "empty-note";
+          empty.textContent = "No events.";
+          list.appendChild(empty);
+        } else {
+          indices.forEach(idx => {
+            const ev = events[idx];
+            const card = document.createElement("div");
+            card.className = "event-card";
+            card.draggable = true;
+            card.dataset.eventIndex = idx;
+            card.dataset.actId = act.id;
+            card.ondragstart = (e) => {
+              e.dataTransfer.setData("eventIndex", idx);
+            };
+            card.ondragover = (e) => e.preventDefault();
+            card.ondrop = (e) => {
+              e.preventDefault();
+              const fromIdx = parseInt(e.dataTransfer.getData("eventIndex"), 10);
+              if (Number.isNaN(fromIdx)) return;
+              const currentActId = act.id;
+              const ordered = getActEventIndices(currentActId).filter(i => i !== fromIdx);
+              const targetPos = ordered.indexOf(idx);
+              const insertPos = targetPos === -1 ? ordered.length : targetPos;
+              ordered.splice(insertPos, 0, fromIdx);
+              setActOrder(currentActId, ordered);
+              saveProject();
+              renderActs();
+            };
+
+            const title = document.createElement("div");
+            title.className = "event-title";
+            title.textContent = ev.title || "(Untitled Event)";
+
+            const meta = document.createElement("div");
+            meta.className = "event-meta";
+            meta.textContent = ev.when ? ev.when : "";
+
+            const actions = document.createElement("div");
+            actions.className = "event-actions";
+            const select = document.createElement("select");
+            const options = [{ id: "", title: "Unassigned" }].concat(acts);
+            options.forEach(opt => {
+              const option = document.createElement("option");
+              option.value = opt.id;
+              option.textContent = opt.title;
+              if (opt.id === (ev.actId || "")) option.selected = true;
+              select.appendChild(option);
+            });
+            select.onchange = () => moveEventToAct(idx, select.value);
+            actions.appendChild(select);
+
+            card.appendChild(title);
+            card.appendChild(meta);
+            card.appendChild(actions);
+            list.appendChild(card);
+          });
+        }
+
+        col.appendChild(header);
+        col.appendChild(list);
+        board.appendChild(col);
+      });
+    }
+
+    (async function initActManager() {
+      await loadProject();
+      renderTemplates();
+      renderActs();
+    })();
+  </script>
+</body>
+</html>
+

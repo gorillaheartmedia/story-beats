@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="project-safety.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Story Model</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --main-blue: #1958ca;
+      --accent-blue: #3b82f6;
+      --glass-bg: rgba(24,39,70,0.94);
+      --card-bg: rgba(255,255,255,0.12);
+    }
+    html, body { height: 100%; min-height: 100vh; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #143575 60%, #1958ca 100%);
+      color: #e8ecfa;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 36px auto;
+      background: var(--glass-bg);
+      border-radius: 18px;
+      box-shadow: 0 4px 28px #06103a55;
+      padding: 28px 28px 40px 28px;
+      border: 1.5px solid #3b82f666;
+      animation: fadein 0.7s;
+    }
+    @keyframes fadein { from { opacity: 0; transform: translateY(36px);} to {opacity:1;transform:none;}}
+    h1 { font-size: 2.1em; margin: 0 0 8px 0; color: #fff; }
+    .subhead { color: #b9d8fc; margin-bottom: 16px; }
+    .top-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .btn {
+      background: linear-gradient(92deg, #2671f2, #2959de 90%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1em;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: background .15s, color .14s;
+      box-shadow: 0 2px 9px #10399a24;
+    }
+    .btn:hover { background: linear-gradient(92deg, #2959de 0%, #60a5fa 100%); color: #e0f4ff; }
+    .beats {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .beat-card {
+      background: var(--card-bg);
+      border: 1.5px solid #2953a950;
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 2px 16px #0a194e29;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .beat-card.dragging { opacity: 0.6; }
+    .beat-handle {
+      cursor: grab;
+      font-size: 1.4em;
+      color: #5e87da;
+      user-select: none;
+      margin-top: 4px;
+    }
+    .beat-main { flex: 1; }
+    .beat-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .beat-badge {
+      background: #163b75;
+      color: #bfe0ff;
+      border: 1px solid #2e5bb3;
+      border-radius: 999px;
+      font-size: 0.85em;
+      padding: 3px 9px;
+      font-weight: 600;
+    }
+    .beat-title input {
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      padding: 6px 10px;
+      font-size: 1em;
+      min-width: 240px;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 500;
+      color: #f0f4ff;
+    }
+    input, select, textarea {
+      width: 100%;
+      max-width: 520px;
+      padding: 8px 10px;
+      margin-top: 6px;
+      border-radius: 7px;
+      border: 1.2px solid #284687;
+      background: #19306a44;
+      color: #e8ecfa;
+      font-size: 1em;
+      outline: none;
+      transition: border .18s;
+    }
+    textarea { resize: vertical; }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .pill {
+      background: #2563eb33;
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 0.95em;
+      color: #bee1fd;
+      border: 1.2px solid #3b82f655;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pill button {
+      background: none;
+      border: none;
+      color: #60a5fa;
+      cursor: pointer;
+      font-size: 1em;
+    }
+    .pill button:hover { color: #fff; }
+    .list-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .list-row select { flex: 1; min-width: 180px; }
+    .list-row .btn { padding: 6px 12px; }
+    .event-ref {
+      display: grid;
+      grid-template-columns: 1fr 180px auto;
+      gap: 8px;
+      align-items: center;
+      background: #152d57;
+      border-radius: 8px;
+      padding: 6px 8px;
+      border: 1px solid #264a8f;
+    }
+    .event-ref select { margin-top: 0; }
+    .event-ref button { padding: 6px 10px; }
+    .empty-note { color: #9fb7e8; opacity: 0.75; }
+    @media (max-width: 700px) {
+      .container { padding: 12px 2vw 20px 2vw; }
+      .event-ref { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script>
+    getProjectId().then(projectId => {
+      if (!projectId) {
+        alert("No project selected!");
+        window.location.href = "project_core.html";
+      }
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="top-bar">
+      <div>
+        <button class="btn" onclick="goToProjectCore()">Project Core Hub</button>
+        <button class="btn" onclick="goToCoreSetup()">Core Story Setup</button>
+        <button class="btn" onclick="goToActManager()">Act Manager</button>
+        <button class="btn" onclick="goToEventManager()">Event Manager</button>
+      </div>
+      <button class="btn" onclick="addBeat()">Add Story Beat</button>
+    </div>
+    <h1 id="projTitle">Story Model</h1>
+    <div class="subhead">Story beats are the model layer. Events stay separate and can be attached as reveals inside each beat.</div>
+    <div id="beats" class="beats"></div>
+  </div>
+
+  <script>
+    const REVEAL_STATUSES = [
+      "Fully revealed",
+      "Partially revealed",
+      "Misrepresented",
+      "Still hidden"
+    ];
+
+    function getQueryParam(name) {
+      let params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+    async function getProjectsAsync() { return await window.projectStoreGetProjects(); }
+    async function setProjectsAsync(arr) { return await window.projectStoreSetProjects(arr); }
+
+    let projectId = getQueryParam("id");
+    let project = null;
+    let beats = [];
+    let events = [];
+    let scenes = [];
+    let acts = [];
+
+    function ensureActs(list) {
+      if (Array.isArray(list) && list.length) return list;
+      return [
+        { id: "act_1", title: "Act I" },
+        { id: "act_2", title: "Act II" },
+        { id: "act_3", title: "Act III" }
+      ];
+    }
+    function ensureIds(list, prefix) {
+      list.forEach((item, i) => {
+        if (!item.id) item.id = prefix + "_" + Date.now() + "_" + i;
+      });
+    }
+
+    async function loadProject() {
+      if (!projectId) {
+        alert("No project ID.");
+        window.location.href = "project_core.html";
+        return;
+      }
+      let arr = await getProjectsAsync();
+      project = arr.find(p => p.id === projectId);
+      if (!project) {
+        alert("Project not found.");
+        window.location.href = "project_core.html";
+        return;
+      }
+      if (!project.events) project.events = [];
+      if (!project.scenes) project.scenes = [];
+      if (!project.acts) project.acts = [];
+      if (!project.beats) project.beats = [];
+
+      events = project.events;
+      scenes = project.scenes;
+      acts = ensureActs(project.acts);
+      beats = migrateStoryBeats(project.beats, project.plotMoments);
+
+      ensureIds(events, "event");
+      ensureIds(scenes, "scene");
+      ensureIds(beats, "beat");
+      project.acts = acts;
+      project.beats = beats;
+      delete project.plotMoments;
+
+      document.getElementById("projTitle").textContent =
+        "Story Model: " + (project.meta && project.meta.storyTitle ? project.meta.storyTitle : "Untitled");
+      await saveProject();
+    }
+
+    async function saveProject() {
+      project.events = events;
+      project.scenes = scenes;
+      project.acts = acts;
+      project.beats = beats;
+      let arr = await getProjectsAsync();
+      let idx = arr.findIndex(p => p.id === projectId);
+      if (idx !== -1) {
+        project.lastModified = (new Date()).toISOString();
+        arr[idx] = project;
+        await setProjectsAsync(arr);
+      }
+    }
+
+    function goToProjectCore() {
+      window.location.href = "project_core.html?id=" + encodeURIComponent(projectId);
+    }
+    function goToCoreSetup() {
+      window.location.href = "plot_engine.html?id=" + encodeURIComponent(projectId);
+    }
+    function goToActManager() {
+      window.location.href = "act_manager.html?id=" + encodeURIComponent(projectId);
+    }
+    function goToEventManager() {
+      window.location.href = "event_manager.html?id=" + encodeURIComponent(projectId);
+    }
+
+    function migrateStoryBeats(currentBeats, oldMoments) {
+      const normalized = Array.isArray(currentBeats) ? currentBeats.map(normalizeStoryBeat) : [];
+      const migrated = Array.isArray(oldMoments) ? oldMoments.map(normalizeStoryBeat) : [];
+      migrated.forEach(beat => {
+        const duplicate = normalized.some(item =>
+          (beat.id && item.id === beat.id) ||
+          (beat.title && item.title === beat.title && item.belief === beat.belief)
+        );
+        if (!duplicate) normalized.push(beat);
+      });
+      return normalized;
+    }
+
+    function normalizeStoryBeat(beat) {
+      const item = beat && typeof beat === "object" ? { ...beat } : {};
+      item.title = item.title || "";
+      item.belief = item.belief || item.description || "";
+      item.actId = item.actId || "";
+      item.scenes = Array.isArray(item.scenes) ? item.scenes : [];
+      item.events = Array.isArray(item.events) ? item.events : [];
+      item.causes = Array.isArray(item.causes) ? item.causes : [];
+      return item;
+    }
+
+    function addBeat() {
+      beats.push({
+        id: "beat_" + Date.now(),
+        title: "",
+        belief: "",
+        actId: "",
+        scenes: [],
+        events: [],
+        causes: []
+      });
+      saveProject();
+      renderBeats();
+    }
+
+    function deleteBeat(idx) {
+      if (!confirm("Delete this story beat?")) return;
+      beats.splice(idx, 1);
+      saveProject();
+      renderBeats();
+    }
+
+    function getEventTitle(id) {
+      const ev = events.find(e => e.id === id);
+      return ev ? (ev.title || "Untitled Event") : "Unknown Event";
+    }
+    function getSceneTitle(id) {
+      const sc = scenes.find(s => s.id === id);
+      return sc ? (sc.title || "Untitled Scene") : "Unknown Scene";
+    }
+
+    function renderBeats() {
+      const wrap = document.getElementById("beats");
+      wrap.innerHTML = "";
+      if (!beats.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-note";
+        empty.textContent = "No story beats yet. Add one to begin the flow.";
+        wrap.appendChild(empty);
+        return;
+      }
+
+      beats.forEach((beat, idx) => {
+        const card = document.createElement("div");
+        card.className = "beat-card";
+        card.draggable = true;
+        card.ondragstart = (e) => {
+          card.classList.add("dragging");
+          e.dataTransfer.setData("beatIndex", idx);
+        };
+        card.ondragend = () => card.classList.remove("dragging");
+        card.ondragover = (e) => { e.preventDefault(); };
+        card.ondrop = (e) => {
+          e.preventDefault();
+          const from = parseInt(e.dataTransfer.getData("beatIndex"), 10);
+          if (Number.isNaN(from) || from === idx) return;
+          const [moved] = beats.splice(from, 1);
+          beats.splice(idx, 0, moved);
+          saveProject();
+          renderBeats();
+        };
+
+        const handle = document.createElement("div");
+        handle.className = "beat-handle";
+        handle.textContent = "⋮⋮";
+
+        const main = document.createElement("div");
+        main.className = "beat-main";
+
+        const header = document.createElement("div");
+        header.className = "beat-header";
+        const badge = document.createElement("div");
+        badge.className = "beat-badge";
+        badge.textContent = "B" + (idx + 1);
+        const titleWrap = document.createElement("div");
+        titleWrap.className = "beat-title";
+        const titleInput = document.createElement("input");
+        titleInput.placeholder = "Beat label (optional)";
+        titleInput.value = beat.title || "";
+        titleInput.oninput = () => {
+          beat.title = titleInput.value;
+          saveProject();
+        };
+        titleWrap.appendChild(titleInput);
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.onclick = () => deleteBeat(idx);
+        header.appendChild(badge);
+        header.appendChild(titleWrap);
+        header.appendChild(deleteBtn);
+
+        const actLabel = document.createElement("label");
+        actLabel.textContent = "Act Overlay";
+        const actSelect = document.createElement("select");
+        actSelect.innerHTML = "<option value=\"\">Unassigned</option>";
+        acts.forEach(act => {
+          const opt = document.createElement("option");
+          opt.value = act.id;
+          opt.textContent = act.title;
+          if (act.id === beat.actId) opt.selected = true;
+          actSelect.appendChild(opt);
+        });
+        actSelect.onchange = () => {
+          beat.actId = actSelect.value;
+          saveProject();
+        };
+        actLabel.appendChild(actSelect);
+
+        const beliefLabel = document.createElement("label");
+        beliefLabel.textContent = "What the audience believes now";
+        const beliefArea = document.createElement("textarea");
+        beliefArea.rows = 2;
+        beliefArea.value = beat.belief || "";
+        beliefArea.oninput = () => {
+          beat.belief = beliefArea.value;
+          saveProject();
+        };
+        beliefLabel.appendChild(beliefArea);
+
+        const scenesLabel = document.createElement("label");
+        scenesLabel.textContent = "Scenes in this beat";
+        const scenesList = document.createElement("div");
+        scenesList.className = "pill-list";
+        beat.scenes.forEach(sceneId => {
+          const pill = document.createElement("div");
+          pill.className = "pill";
+          pill.textContent = getSceneTitle(sceneId);
+          const remove = document.createElement("button");
+          remove.textContent = "x";
+          remove.onclick = () => {
+            beat.scenes = beat.scenes.filter(id => id !== sceneId);
+            saveProject();
+            renderBeats();
+          };
+          pill.appendChild(remove);
+          scenesList.appendChild(pill);
+        });
+        const scenesRow = document.createElement("div");
+        scenesRow.className = "list-row";
+        const scenesSelect = document.createElement("select");
+        scenesSelect.innerHTML = "<option value=\"\">Select a scene...</option>";
+        scenes.forEach(scene => {
+          const opt = document.createElement("option");
+          opt.value = scene.id;
+          opt.textContent = scene.title || "Untitled Scene";
+          scenesSelect.appendChild(opt);
+        });
+        const scenesAdd = document.createElement("button");
+        scenesAdd.className = "btn";
+        scenesAdd.textContent = "Add Scene";
+        scenesAdd.onclick = () => {
+          const val = scenesSelect.value;
+          if (!val) return;
+          if (!beat.scenes.includes(val)) beat.scenes.push(val);
+          scenesSelect.value = "";
+          saveProject();
+          renderBeats();
+        };
+        scenesRow.appendChild(scenesSelect);
+        scenesRow.appendChild(scenesAdd);
+        scenesLabel.appendChild(scenesList);
+        scenesLabel.appendChild(scenesRow);
+
+        const eventsLabel = document.createElement("label");
+        eventsLabel.textContent = "Event reveals";
+        const eventList = document.createElement("div");
+        eventList.className = "pill-list";
+        beat.events.forEach((ref, refIdx) => {
+          const row = document.createElement("div");
+          row.className = "event-ref";
+          const eventSelect = document.createElement("select");
+          eventSelect.innerHTML = "<option value=\"\">Select event...</option>";
+          events.forEach(ev => {
+            const opt = document.createElement("option");
+            opt.value = ev.id;
+            opt.textContent = ev.title || "Untitled Event";
+            if (ev.id === ref.eventId) opt.selected = true;
+            eventSelect.appendChild(opt);
+          });
+          eventSelect.onchange = () => {
+            ref.eventId = eventSelect.value;
+            saveProject();
+          };
+          const revealSelect = document.createElement("select");
+          REVEAL_STATUSES.forEach(status => {
+            const opt = document.createElement("option");
+            opt.value = status;
+            opt.textContent = status;
+            if (status === ref.reveal) opt.selected = true;
+            revealSelect.appendChild(opt);
+          });
+          revealSelect.onchange = () => {
+            ref.reveal = revealSelect.value;
+            saveProject();
+          };
+          const remove = document.createElement("button");
+          remove.className = "btn";
+          remove.textContent = "Remove";
+          remove.onclick = () => {
+            beat.events.splice(refIdx, 1);
+            saveProject();
+            renderBeats();
+          };
+          row.appendChild(eventSelect);
+          row.appendChild(revealSelect);
+          row.appendChild(remove);
+          eventList.appendChild(row);
+        });
+        const addEventRow = document.createElement("div");
+        addEventRow.className = "list-row";
+        const addEventSelect = document.createElement("select");
+        addEventSelect.innerHTML = "<option value=\"\">Select event...</option>";
+        events.forEach(ev => {
+          const opt = document.createElement("option");
+          opt.value = ev.id;
+          opt.textContent = ev.title || "Untitled Event";
+          addEventSelect.appendChild(opt);
+        });
+        const addEventBtn = document.createElement("button");
+        addEventBtn.className = "btn";
+        addEventBtn.textContent = "Add Event";
+        addEventBtn.onclick = () => {
+          const val = addEventSelect.value;
+          if (!val) return;
+          if (!beat.events.some(e => e.eventId === val)) {
+            beat.events.push({ eventId: val, reveal: REVEAL_STATUSES[0] });
+          }
+          addEventSelect.value = "";
+          saveProject();
+          renderBeats();
+        };
+        addEventRow.appendChild(addEventSelect);
+        addEventRow.appendChild(addEventBtn);
+        eventsLabel.appendChild(eventList);
+        eventsLabel.appendChild(addEventRow);
+
+        const causeLabel = document.createElement("label");
+        causeLabel.textContent = "Causality markers";
+        const causeList = document.createElement("div");
+        causeList.className = "pill-list";
+        beat.causes.forEach((cause, causeIdx) => {
+          const pill = document.createElement("div");
+          pill.className = "pill";
+          pill.textContent = cause;
+          const remove = document.createElement("button");
+          remove.textContent = "x";
+          remove.onclick = () => {
+            beat.causes.splice(causeIdx, 1);
+            saveProject();
+            renderBeats();
+          };
+          pill.appendChild(remove);
+          causeList.appendChild(pill);
+        });
+        const causeRow = document.createElement("div");
+        causeRow.className = "list-row";
+        const causeInput = document.createElement("input");
+        causeInput.type = "text";
+        causeInput.placeholder = "This beat causes...";
+        const causeAdd = document.createElement("button");
+        causeAdd.className = "btn";
+        causeAdd.textContent = "Add Marker";
+        causeAdd.onclick = () => {
+          const val = causeInput.value.trim();
+          if (!val) return;
+          beat.causes.push(val);
+          causeInput.value = "";
+          saveProject();
+          renderBeats();
+        };
+        causeRow.appendChild(causeInput);
+        causeRow.appendChild(causeAdd);
+        causeLabel.appendChild(causeList);
+        causeLabel.appendChild(causeRow);
+
+        main.appendChild(header);
+        main.appendChild(actLabel);
+        main.appendChild(beliefLabel);
+        main.appendChild(scenesLabel);
+        main.appendChild(eventsLabel);
+        main.appendChild(causeLabel);
+
+        card.appendChild(handle);
+        card.appendChild(main);
+        wrap.appendChild(card);
+      });
+    }
+
+    (async function init() {
+      await loadProject();
+      renderBeats();
+    })();
+  </script>
+</body>
+</html>
+

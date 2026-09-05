@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <title>Trope Tarot Generator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -189,7 +190,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -330,3 +331,5 @@ document.addEventListener('DOMContentLoaded', () => {
 <div id="fab-home" class="orbit-child-fab" data-tooltip="Core Project" onclick="window.location.href='project_core.html'">🏠</div>
 </body>
 </html>
+
+

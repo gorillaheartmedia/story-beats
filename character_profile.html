@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Character Profile</title>
@@ -338,6 +339,40 @@
 
   let char = projectCharacters[charIndex];
 
+  function isQuotaExceededError(err) {
+    return !!err && (err.name === "QuotaExceededError" || err.name === "NS_ERROR_DOM_QUOTA_REACHED" || err.code === 22);
+  }
+
+  function persistCharacters() {
+    try {
+      localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+      return true;
+    } catch (err) {
+      if (isQuotaExceededError(err)) {
+        if (typeof showToast === "function") {
+          showToast("Storage is full. Remove images or reduce content.", "#dc3545");
+        } else {
+          alert("Storage is full. Remove images or reduce content.");
+        }
+        return false;
+      }
+      throw err;
+    }
+  }
+
+  function resizeImageToDataUrl(img, maxDim, quality) {
+    const canvas = document.createElement("canvas");
+    let { width, height } = img;
+    const scale = Math.min(1, maxDim / Math.max(width, height));
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", quality);
+  }
+
   // Ensure arrays exist
   char.tags = char.tags || [];
   char.timeline = char.timeline || [];
@@ -433,8 +468,9 @@
     char.ethicsNotes = document.getElementById("ethicsNotes").value;
 
     projectCharacters[charIndex] = char;
-    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
-    alert("Character saved!");
+    if (persistCharacters()) {
+      showToast("Character saved successfully!");
+    }
   }
 
   function goBack() {
@@ -445,12 +481,25 @@
   document.getElementById("imageInput").addEventListener("change", function(e) {
     const file = e.target.files[0];
     if (file) {
+      const previousImage = char.image || "";
       const reader = new FileReader();
       reader.onload = function(evt) {
-        char.image = evt.target.result;
-        document.getElementById("avatar").src = char.image;
-        projectCharacters[charIndex] = char;
-        localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+        const img = new Image();
+        img.onload = function() {
+          char.image = resizeImageToDataUrl(img, 512, 0.82);
+          document.getElementById("avatar").src = char.image;
+          projectCharacters[charIndex] = char;
+          if (persistCharacters()) {
+            showToast("Image updated!", "#28a745");
+          } else {
+            char.image = previousImage;
+            document.getElementById("avatar").src = char.image || "https://via.placeholder.com/200x200?text=No+Image";
+          }
+        };
+        img.onerror = function() {
+          showToast("Image load failed.", "#dc3545");
+        };
+        img.src = evt.target.result;
       };
       reader.readAsDataURL(file);
     }
@@ -468,15 +517,20 @@
     });
   }
   function removeTag(i) {
-    char.tags.splice(i, 1);
-    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    const removed = char.tags.splice(i, 1)[0];
+    if (!persistCharacters()) {
+      char.tags.splice(i, 0, removed);
+    }
     renderTags();
   }
   document.getElementById("tagInput").addEventListener("keydown", function (e) {
     if (e.key === "Enter" && this.value.trim()) {
-      char.tags.push(this.value.trim());
+      const newTag = this.value.trim();
+      char.tags.push(newTag);
       this.value = "";
-      localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+      if (!persistCharacters()) {
+        char.tags.pop();
+      }
       renderTags();
       e.preventDefault();
     }
@@ -503,13 +557,18 @@
     });
   }
   function addTimelineEvent() {
-    char.timeline.push({
+    const newEvent = {
       date: document.getElementById("eventDate").value,
       title: document.getElementById("eventTitle").value,
       description: document.getElementById("eventDesc").value,
       category: document.getElementById("eventCategory").value,
-    });
-    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    };
+    char.timeline.push(newEvent);
+    if (!persistCharacters()) {
+      char.timeline.pop();
+    } else {
+      showToast("Timeline event added!", "#17a2b8");
+    }
     renderTimeline();
   }
   function editTimelineEvent(index) {
@@ -521,8 +580,10 @@
     removeTimelineEvent(index);
   }
   function removeTimelineEvent(i) {
-    char.timeline.splice(i, 1);
-    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
+    const removed = char.timeline.splice(i, 1)[0];
+    if (!persistCharacters()) {
+      char.timeline.splice(i, 0, removed);
+    }
     renderTimeline();
   }
 
@@ -611,82 +672,9 @@
       toast.remove();
     }, 3000);
   }
-
-  // Replace alert in saveProfile
-  function saveProfile() {
-    char.name = document.getElementById("name").value;
-    char.gender = document.getElementById("gender").value;
-    char.age = document.getElementById("age").value;
-    char.birthday = document.getElementById("birthday").value;
-    char.ethnicity = document.getElementById("ethnicity").value;
-    char.height = document.getElementById("height").value;
-    char.weight = document.getElementById("weight").value;
-    char.bodyType = document.getElementById("bodyType").value;
-    char.eyeColor = document.getElementById("eyeColor").value;
-    char.hairColor = document.getElementById("hairColor").value;
-    char.hairLength = document.getElementById("hairLength").value;
-    char.birthplace = document.getElementById("birthplace").value;
-    char.parent1 = document.getElementById("parent1").value;
-    char.parent2 = document.getElementById("parent2").value;
-    char.income = document.getElementById("income").value;
-    char.occupationalHistory = document.getElementById("occupationalHistory").value;
-    char.worstEnemy = document.getElementById("worstEnemy").value;
-    char.bestFriend = document.getElementById("bestFriend").value;
-    char.neutralAlly = document.getElementById("neutralAlly").value;
-    char.siblings = document.getElementById("siblings").value;
-    char.spouse = document.getElementById("spouse").value;
-    char.maritalStatus = document.getElementById("maritalStatus").value;
-    char.relationshipHistory = document.getElementById("relationshipHistory").value;
-    char.role = document.getElementById("role").value;
-    char.description = document.getElementById("description").value;
-    char.skill = document.getElementById("skill").value;
-    char.power = document.getElementById("power").value;
-    char.trinket = document.getElementById("trinket").value;
-    const licenseVal = document.getElementById("licenses").value.trim();
-    char.licenses = licenseVal ? licenseVal.split(",").map(s => s.trim()) : [];
-    char.locMorning = document.getElementById("locMorning").value;
-    char.locAfternoon = document.getElementById("locAfternoon").value;
-    char.locEvening = document.getElementById("locEvening").value;
-    char.locNight = document.getElementById("locNight").value;
-    char.lastSeenLocation = document.getElementById("lastSeenLocation").value;
-    char.lastSeenTime = document.getElementById("lastSeenTime").value;
-    char.ethics = document.getElementById("ethics").value;
-    char.ethicsNotes = document.getElementById("ethicsNotes").value;
-
-    projectCharacters[charIndex] = char;
-    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
-    showToast("Character saved successfully!");
-  }
-
-  // Override image upload toast
-  document.getElementById("imageInput").addEventListener("change", function(e) {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        char.image = evt.target.result;
-        document.getElementById("avatar").src = char.image;
-        projectCharacters[charIndex] = char;
-        localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
-        showToast("Image updated!", "#28a745");
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-
-  // Override timeline add
-  function addTimelineEvent() {
-    char.timeline.push({
-      date: document.getElementById("eventDate").value,
-      title: document.getElementById("eventTitle").value,
-      description: document.getElementById("eventDesc").value,
-      category: document.getElementById("eventCategory").value,
-    });
-    localStorage.setItem("characters_" + projectId, JSON.stringify(projectCharacters));
-    renderTimeline();
-    showToast("Timeline event added!", "#17a2b8");
-  }
 </script>
 
 </body>
 </html>
+
+

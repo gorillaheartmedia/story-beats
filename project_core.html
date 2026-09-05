@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Project Core Hub</title>
@@ -32,6 +33,26 @@
       margin-bottom: 7px;
       font-weight: 700;
       letter-spacing: .02em;
+    }
+    .hub-back-link {
+      position: absolute;
+      top: 16px;
+      left: 18px;
+      color: #b9e6ff;
+      background: #193772ad;
+      border: 1px solid #3b82f666;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.95em;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 2px 10px #10225233;
+      transition: background .14s, color .13s, border-color .13s;
+    }
+    .hub-back-link:hover {
+      background: #2959de;
+      color: #fff;
+      border-color: #60a5fa;
     }
     .proj-meta {
       color: #aee5ff;
@@ -175,33 +196,42 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
 <body>
   <div class="core-container">
+    <a href="index.html" class="hub-back-link">Back to Story Creation</a>
     <div class="proj-title" id="projTitle">🌟 Project: [Project Name]</div>
     <div class="proj-meta" id="projMeta">
-      Last updated: <span id="lastUpdated">Just Now</span> &nbsp; | &nbsp; Scenes: <span id="sceneCount">0</span> | Characters: <span id="charCount">0</span>
+      Last updated: <span id="lastUpdated">Just Now</span> &nbsp; | &nbsp; Beats: <span id="beatCount">0</span> | Characters: <span id="charCount">0</span>
     </div>
     <div>
-      <span class="quick-link" id="goToFirstScene" style="display:none;">Go to First Scene</span>
+      <span class="quick-link" id="goToFirstScene" style="display:none;">Go to First Beat</span>
       <span class="quick-link" id="goToFirstCharacter" style="display:none;">Go to First Character</span>
       <span class="quick-link" id="goToFirstEvent" style="display:none;">Go to First Event</span>
     </div>
     <div class="core-grid">
-      <a href="plot_engine.html" class="core-tile" data-tool="plot">
+      <a href="plot_structure.html" class="core-tile" data-tool="plot">
         <span class="tile-icon">🗺️</span>
-        Plot & Story Beats
+        Story Model & Beats
       </a>
       <a href="event_manager.html" class="core-tile" data-tool="events">
         <span class="tile-icon">📅</span>
         Event Manager & Timeline
       </a>
+      <a href="orthogonal_timeline.html" class="core-tile" data-tool="orthogonal-timeline">
+        <span class="tile-icon">⊞</span>
+        Timeline Variables
+      </a>
       <a href="character_layer.html" class="core-tile" data-tool="character">
         <span class="tile-icon">👤</span>
         Character Profiles & Life Graph
+      </a>
+      <a href="relationship_grid.html" class="core-tile" data-tool="relationships">
+        <span class="tile-icon">RG</span>
+        Relationship Grid
       </a>
       <a href="location_profiles.html" class="core-tile" data-tool="location">
         <span class="tile-icon">🏞️</span>
@@ -215,9 +245,17 @@
         <span class="tile-icon">🎴</span>
         Card Prompt Tool
       </a>
-        <a href="chapter_outliner.html" class="core-tile" data-tool="outliner">
+      <a href="chess.html" class="core-tile" data-tool="chess">
+        <span class="tile-icon">♟</span>
+        Literary Chessboard
+      </a>
+        <a href="chapter_outliner.html" class="core-tile" data-tool="outliner" data-mode="outliner">
         <span class="tile-icon">📖</span> 
-        Chapter Outliner/Drafter
+        Chapter Outliner
+      </a>
+      <a href="chapter_outliner.html" class="core-tile" data-tool="drafter" data-mode="drafter">
+        <span class="tile-icon">DR</span>
+        Story Drafter
       </a>
       <!-- NEW TAROT TILE -->
       <a href="tarot_generator.html" class="core-tile" data-tool="tarot">
@@ -247,6 +285,10 @@
       <a href="concept_library.html" class="core-tile" data-tool="concept library">
         <span class="tile-icon">🗺️</span>
         Concept Library
+      </a>
+      <a href="5traits.html" class="core-tile" data-tool="traits">
+        <span class="tile-icon">dY?`</span>
+        5 Traits Grid
       </a>
     </div>
     <div class="core-actions">
@@ -278,13 +320,13 @@
       let eventId = getQueryParam('eventId');
       if (!projectId) {
         alert("No project selected. Returning to dashboard.");
-        window.location.href = "dashboard.html";
+        window.location.href = "project_core.html";
         return;
       }
       sessionStorage.setItem('currentPlotProjectId', projectId);
       localStorage.setItem('currentProjectId', projectId);
 
-      document.addEventListener("DOMContentLoaded", function() {
+      document.addEventListener("DOMContentLoaded", async function() {
         // Update all tool links to always pass context
         document.querySelectorAll('.core-tile').forEach(function(tile) {
           let href = tile.getAttribute('href');
@@ -294,7 +336,13 @@
             if (tile.dataset.tool === "character" && characterId) params.push(`characterId=${encodeURIComponent(characterId)}`);
             if (tile.dataset.tool === "plot" && sceneId) params.push(`sceneId=${encodeURIComponent(sceneId)}`);
             if (tile.dataset.tool === "events" && eventId) params.push(`eventId=${encodeURIComponent(eventId)}`);
+            if (tile.dataset.mode) params.push(`mode=${encodeURIComponent(tile.dataset.mode)}`);
             if (tile.dataset.tool === "tarot" && sceneId) params.push(`sceneId=${encodeURIComponent(sceneId)}`); // For Tarot
+            if (tile.dataset.tool === "traits") {
+              if (sceneId) params.push(`sceneId=${encodeURIComponent(sceneId)}`);
+              if (characterId) params.push(`characterId=${encodeURIComponent(characterId)}`);
+              if (eventId) params.push(`eventId=${encodeURIComponent(eventId)}`);
+            }
             tile.setAttribute('href', url + '?' + params.join('&'));
           }
         });
@@ -312,13 +360,13 @@
 
         // Load project info
         try {
-          let projects = JSON.parse(localStorage.getItem("plotProjects") || "[]");
+          let projects = await window.projectStoreGetProjects();
           let proj = projects.find(p => p.id === projectId);
           if (proj) {
             document.getElementById('projTitle').textContent = '🌟 Project: ' + (proj.meta?.storyTitle || "(Untitled)");
             document.getElementById('lastUpdated').textContent = new Date(proj.lastModified || Date.now()).toLocaleString();
-            // Scene and character counts (customize for your structure)
-            document.getElementById('sceneCount').textContent = Array.isArray(proj.beats) ? proj.beats.length : 0;
+            // Beat and character counts
+            document.getElementById('beatCount').textContent = Array.isArray(proj.beats) ? proj.beats.length : 0;
             document.getElementById('charCount').textContent = Array.isArray(proj.characters) ? proj.characters.length : 0;
 
             // Show quick links if any
@@ -326,7 +374,7 @@
               let link = document.getElementById('goToFirstScene');
               link.style.display = '';
               link.onclick = function() {
-                let url = "plot_engine.html?id=" + encodeURIComponent(projectId) + "&sceneId=" + encodeURIComponent(proj.beats[0].id);
+                let url = "plot_structure.html?id=" + encodeURIComponent(projectId) + "&beatId=" + encodeURIComponent(proj.beats[0].id);
                 if (characterId) url += "&characterId=" + encodeURIComponent(characterId);
                 if (eventId) url += "&eventId=" + encodeURIComponent(eventId);
                 window.location.href = url;
@@ -372,3 +420,6 @@
   </script>
 </body>
 </html>
+
+
+

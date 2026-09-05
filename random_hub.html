@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="project-safety.js"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Random Generator Hub • Story Beats</title>
@@ -81,6 +82,23 @@
       background: linear-gradient(180deg, rgba(124,156,255,.12), rgba(124,156,255,.04)); border:1px solid rgba(124,156,255,.25);
       text-align:center; margin: 10px 0 6px;
     }
+    .choice-row{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+    .choice-btn.selected{
+      border-color: var(--accent-2);
+      background: linear-gradient(180deg, rgba(96,212,167,.25), rgba(96,212,167,.08));
+      color:#fff;
+    }
+    .countdown{
+      min-height:58px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: clamp(24px, 4vw, 42px);
+      font-weight:900;
+      color:var(--warn);
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
     .history{display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; margin-top:10px}
     .history .h-item{padding:10px; border-radius:10px; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); display:flex; align-items:center; justify-content:space-between; gap:8px}
     .star{cursor:pointer; user-select:none}
@@ -101,7 +119,7 @@
     console.log("Current projectId:", projectId);
     if (!projectId) {
       alert("No project selected!");
-      window.location.href = "dashboard.html";
+      window.location.href = "project_core.html";
     }
   });
 </script>
@@ -161,11 +179,11 @@
     // URL param helpers
     // ----------------------
     const url = new URL(location.href);
-    const projectId = url.searchParams.get('projectId') || 'default';
+    const projectId = url.searchParams.get('projectId') || url.searchParams.get('id') || 'default';
     document.getElementById('projectLabel').textContent = projectId;
 
     document.getElementById('toDashboard').onclick = () => {
-      const target = `project_core.html?projectId=${encodeURIComponent(projectId)}`;
+      const target = `project_core.html?id=${encodeURIComponent(projectId)}`;
       location.href = target;
     };
 
@@ -191,6 +209,7 @@
     // Catalog of generators
     // ----------------------
     const generators = [
+      { id:'rps', icon:'RPS', title:'Rock Paper Scissors', tags:['choice','game','random'], desc:'Pick one, then reveal the generator pick after a countdown.', open: () => openRockPaperScissors() },
       { id:'names', icon:'🧾', title:'Random Name', tags:['people','names','character'], desc:'Quick human & fantasy names with styles.', open: () => openNames() },
       { id:'dice', icon:'🎲', title:'Dice Roller', tags:['numbers','rpg','probability'], desc:'Roll d4–d100 with count & sum.', open: () => openDice() },
       { id:'coin', icon:'🪙', title:'Coin Flip', tags:['yes/no','binary','probability'], desc:'Heads or Tails (with history).', open: () => openCoin() },
@@ -608,6 +627,79 @@ function removeHistoryItem(historyKey, idx){
       current.roll = roll;  renderHistory(historyKey);
     }
 
+    function openRockPaperScissors(){
+      const historyKey = 'rps:hist';
+      let writerPick = "";
+      let countdownTimer = null;
+      let isCountingDown = false;
+      current = { id:'rps', historyKey, roll };
+      openShell('Rock Paper Scissors', `
+        <div class="subtle">Choose your throw, then generate to reveal the random pick.</div>
+        <div class="choice-row" id="rpsChoices">
+          <button class="btn choice-btn" data-choice="Rock">Rock</button>
+          <button class="btn choice-btn" data-choice="Paper">Paper</button>
+          <button class="btn choice-btn" data-choice="Scissors">Scissors</button>
+        </div>
+        <div class="countdown" id="rpsCountdown">Ready</div>
+        <div class="result" id="rpsResult" data-value="">Make your pick.</div>
+        <div class="history"></div>
+      `);
+
+      modalContent.querySelectorAll('.choice-btn').forEach(btn => {
+        btn.onclick = () => {
+          if (isCountingDown) return;
+          writerPick = btn.dataset.choice;
+          modalContent.querySelectorAll('.choice-btn').forEach(item => item.classList.remove('selected'));
+          btn.classList.add('selected');
+          setResult('rpsResult', `You picked ${writerPick}.`);
+          document.getElementById('rpsCountdown').textContent = 'Ready';
+        };
+      });
+
+      function outcome(player, generator){
+        if (player === generator) return 'Tie';
+        if (
+          (player === 'Rock' && generator === 'Scissors') ||
+          (player === 'Paper' && generator === 'Rock') ||
+          (player === 'Scissors' && generator === 'Paper')
+        ) return 'Writer wins';
+        return 'Generator wins';
+      }
+
+      function roll(){
+        if (!writerPick) {
+          alert('Pick Rock, Paper, or Scissors first.');
+          return;
+        }
+        if (isCountingDown) return;
+        const countdown = document.getElementById('rpsCountdown');
+        isCountingDown = true;
+        const beats = ['Rock', 'Paper', 'Scissors', 'Shoot'];
+        let idx = 0;
+        countdown.textContent = beats[idx];
+        setResult('rpsResult', '...');
+        countdownTimer = setInterval(() => {
+          idx++;
+          if (idx < beats.length) {
+            countdown.textContent = beats[idx];
+            return;
+          }
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+          isCountingDown = false;
+          const generatorPick = pick(['Rock', 'Paper', 'Scissors']);
+          const result = outcome(writerPick, generatorPick);
+          const out = `You: ${writerPick} | Generator: ${generatorPick} | ${result}`;
+          countdown.textContent = generatorPick;
+          setResult('rpsResult', out);
+          pushHistory(historyKey, out);
+        }, 650);
+      }
+
+      current.roll = roll;
+      renderHistory(historyKey);
+    }
+
     // 10) Setting Seed
     function openSettingSeed(){
       const historyKey = 'setting:hist';
@@ -661,3 +753,5 @@ function removeHistoryItem(historyKey, idx){
   </script>
 </body>
 </html>
+
+
