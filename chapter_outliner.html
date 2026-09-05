@@ -140,7 +140,7 @@ h1,h2,h3 { margin:0; color:#fff; }
     <input type="file" id="importJsonInput" accept=".json" hidden>
     <button id="importJsonBtn" class="btn">📂 Import JSON</button>
     <button id="openSprintBtn" class="btn">🏃 Sprint</button>
-    <button id="pasteSprintBtn" class="btn">📋 Paste Sprint</button>
+    <button id="pasteSprintBtn" class="btn">Import Sprint</button>
 
   </div>
 </header>
@@ -198,12 +198,12 @@ h1,h2,h3 { margin:0; color:#fff; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://unpkg.com/docx@8.2.2/build/index.umd.js"></script>
 <script>
-  let storedProject = JSON.parse(localStorage.getItem("currentProject") || "null");
-let projectId = storedProject?.id || localStorage.getItem("currentProjectId") || "defaultProject";
+const pageParams = new URLSearchParams(window.location.search);
+let storedProject = JSON.parse(localStorage.getItem("currentProject") || "null");
+let projectId = pageParams.get("projectId") || pageParams.get("id") || storedProject?.id || localStorage.getItem("currentProjectId") || "defaultProject";
 let chapters = JSON.parse(localStorage.getItem("chapters_" + projectId) || "[]");
 let activeChapterIndex = 0;
 let quill, drafterQuill;
-const pageParams = new URLSearchParams(window.location.search);
 let storyMode = pageParams.get("mode") || localStorage.getItem("storyMode") || "outliner";
 if (!["outliner", "drafter"].includes(storyMode)) storyMode = "outliner";
 let activeDraftChapter = null;
@@ -548,21 +548,34 @@ function renderChapters() {
     list.appendChild(li);
   });
 }
-document.getElementById("pasteSprintBtn").addEventListener("click", async () => {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (!text) {
-      alert("Clipboard is empty.");
-      return;
-    }
-    const pos = drafterQuill.getSelection(true).index;
-    drafterQuill.insertText(pos, text + "\n");
-    drafterQuill.setSelection(pos + text.length + 1);
-    alert("Sprint text pasted!");
-  } catch (err) {
-    console.error(err);
-    alert("Unable to read clipboard. Check browser permissions.");
+function getCurrentSprintText() {
+  const sprint = JSON.parse(localStorage.getItem("currentSprint") || "{}");
+  if (!sprint || !Array.isArray(sprint.logs) || !sprint.logs.length) return "";
+  return sprint.logs.map((log, idx) =>
+    `Session ${idx + 1} - ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}\nNotes: ${log.notes || ""}\n${log.content}`
+  ).join("\n\n---\n\n");
+}
+
+document.getElementById("pasteSprintBtn").addEventListener("click", () => {
+  const text = getCurrentSprintText();
+  if (!text) {
+    alert("No saved sprint entries found. In Sprint, click Save Entry or Send to Drafter first.");
+    return;
   }
+  if (storyMode !== "drafter") switchToStoryMode();
+  if (activeDraftChapter === null) {
+    chapters.push({ id: crypto.randomUUID(), title: `Sprint Import ${chapters.length + 1}`, summary: "", tags: ["sprint-data"], status: "Draft", bodyHtml: "" });
+    activeDraftChapter = chapters.length - 1;
+    renderChapters();
+    renderDrafterChapters();
+    loadDraftChapter(activeDraftChapter);
+  }
+  const pos = drafterQuill.getSelection(true).index;
+  drafterQuill.insertText(pos, text + "\n");
+  drafterQuill.setSelection(pos + text.length + 1);
+  chapters[activeDraftChapter].bodyHtml = drafterQuill.root.innerHTML;
+  saveChapters();
+  alert("Sprint imported into the drafter.");
 });
 
 </script>

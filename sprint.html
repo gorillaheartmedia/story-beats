@@ -317,6 +317,7 @@
       <button id="timerBtn">▶️ Start Countdown</button>
       <button onclick="saveEntry()">💾 Save Entry</button>
       <button onclick="copySprintToClipboard()">📋 Copy Sprint</button>
+      <button onclick="sendSprintToChapter()">Send to Drafter</button>
       <button id="micBtn" class="mic-btn" onclick="toggleDictation()">🎙️ Start Dictation</button>
     </div>
     <textarea id="editorBox" placeholder="Start writing..."></textarea>
@@ -442,7 +443,13 @@
     e.preventDefault();
     let projectInfo = JSON.parse(localStorage.getItem('currentProject') || 'null');
     let projectName = document.getElementById('projectName').value.trim();
-    let projectId = projectInfo?.id || ('proj_' + projectName.replace(/\s+/g, '_').toLowerCase());
+    const params = new URLSearchParams(window.location.search);
+    let projectId =
+      params.get('projectId') ||
+      params.get('id') ||
+      localStorage.getItem('currentProjectId') ||
+      projectInfo?.id ||
+      ('proj_' + projectName.replace(/\s+/g, '_').toLowerCase());
     if (!projectName) return alert("Please enter a project name.");
 
     const prevSprint = JSON.parse(localStorage.getItem('currentSprint') || 'null');
@@ -467,6 +474,7 @@
 
     localStorage.setItem('currentSprint', JSON.stringify(sprint));
     localStorage.setItem('currentProject', JSON.stringify({id: projectId, name: projectName}));
+    localStorage.setItem('currentProjectId', projectId);
     document.getElementById('setupSection').style.display = 'none';
     document.getElementById('editorSection').style.display = 'flex';
     renderGrid();
@@ -798,31 +806,73 @@
     }
   }
 
-  // NEW — Send Sprint Data to Chapter Outliner
+  function getSprintProjectId(sprint) {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      sprint?.projectId ||
+      params.get('projectId') ||
+      params.get('id') ||
+      localStorage.getItem('currentProjectId') ||
+      "defaultProject"
+    );
+  }
+
+  function getSprintText(sprint, includeEditor = true) {
+    const parts = [];
+    if (sprint?.logs?.length) {
+      sprint.logs.forEach((log, idx) => {
+        parts.push(
+          `Session ${idx + 1} - ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}\nNotes: ${log.notes || ""}\n${log.content}`
+        );
+      });
+    }
+
+    const editor = document.getElementById('editorBox');
+    const currentText = includeEditor && editor ? editor.value.trim() : "";
+    if (currentText) {
+      parts.push(
+        `Current unsaved sprint - ${new Date().toISOString()}\nWords: ${currentText.split(/\s+/).filter(Boolean).length}\n${currentText}`
+      );
+    }
+
+    return parts.join("\n\n---\n\n");
+  }
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  // Send Sprint Data to Chapter Outliner / Story Drafter
   function sendSprintToChapter() {
     const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
-    if (!sprint || !sprint.logs || sprint.logs.length === 0) {
-      alert("No sprint data to send.");
+    const sprintText = getSprintText(sprint, true);
+    if (!sprintText) {
+      alert("No sprint data to send. Save an entry or write in the sprint editor first.");
       return;
     }
-    const chaptersKey = "chapters_" + (sprint.projectId || "defaultProject");
+    const sprintProjectId = getSprintProjectId(sprint);
+    const chaptersKey = "chapters_" + sprintProjectId;
     let chapters = JSON.parse(localStorage.getItem(chaptersKey) || "[]");
-
-    const sprintText = sprint.logs.map((log, idx) => 
-      `Session ${idx + 1} — ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}\nNotes: ${log.notes || ""}\n${log.content}`
-    ).join("\n\n---\n\n");
 
     chapters.push({
       id: "chap_" + Date.now(),
-      title: `Sprint: ${sprint.title}`,
+      title: `Sprint: ${sprint.title || "Untitled Sprint"}`,
       summary: sprint.desc || "",
       tags: ["sprint-data"],
       status: "Draft",
-      bodyHtml: `<pre>${sprintText}</pre>`
+      bodyHtml: `<pre>${escapeHtml(sprintText)}</pre>`
     });
 
     localStorage.setItem(chaptersKey, JSON.stringify(chapters));
-    alert("Sprint data sent to Outliner!");
+    localStorage.setItem("currentProjectId", sprintProjectId);
+    localStorage.setItem("currentProject", JSON.stringify({ id: sprintProjectId, name: sprint.projectName || sprint.title || "Current Project" }));
+    alert("Sprint sent to Story Drafter.");
+    window.location.href = `chapter_outliner.html?projectId=${encodeURIComponent(sprintProjectId)}&mode=drafter`;
   }
 
   document.getElementById('editorBox').addEventListener('input', updateWordCount);
@@ -838,23 +888,21 @@
       checkAchievements();
     }
   });
+
   function copySprintToClipboard() {
-  const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
-  if (!sprint || !sprint.logs || sprint.logs.length === 0) {
-    alert("No sprint data to copy.");
-    return;
+    const sprint = JSON.parse(localStorage.getItem('currentSprint') || '{}');
+    const text = getSprintText(sprint, true);
+    if (!text) {
+      alert("No sprint data to copy.");
+      return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Sprint copied to clipboard!");
+    }).catch(err => {
+      console.error(err);
+      alert("Failed to copy sprint.");
+    });
   }
-  let text = `Sprint: ${sprint.title}\nDescription: ${sprint.desc}\n\n`;
-  sprint.logs.forEach((log, idx) => {
-    text += `Session ${idx + 1} — ${log.date}\nWords: ${log.wordCount}, Time: ${log.timeSpent}\nNotes: ${log.notes || ""}\n${log.content}\n\n`;
-  });
-  navigator.clipboard.writeText(text).then(() => {
-    alert("Sprint copied to clipboard!");
-  }).catch(err => {
-    console.error(err);
-    alert("Failed to copy sprint.");
-  });
-}
 
 </script>
 </body>
